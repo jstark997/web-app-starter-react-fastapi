@@ -1,0 +1,60 @@
+# =============================================================================
+# Caddy config for the frontend service on Railway.
+#
+# Caddy serves the built Vite app (dist/) AND reverse-proxies /api/* to the
+# backend service over Railway's private network. Single public origin →
+# no CORS, no cross-site cookies.
+# =============================================================================
+
+{
+	# Railway handles TLS at its edge; Caddy speaks plain HTTP internally.
+	auto_https off
+	# Admin API and persisted config aren't useful in an ephemeral container.
+	admin off
+	persist_config off
+
+	log {
+		format json
+	}
+
+	servers {
+		# Trust Railway's internal network so X-Forwarded-* headers are honored.
+		trusted_proxies static private_ranges 100.0.0.0/8
+	}
+}
+
+# Listen on the port Railway assigns (defaults to 3000 for local Docker runs).
+:{$PORT:3000} {
+	log {
+		format json
+	}
+
+	# Health check endpoint for Railway's healthchecks.
+	handle /health {
+		respond "OK" 200
+	}
+
+	# Proxy API calls to the backend over Railway's private network.
+	# This block MUST come before the static file_server block.
+	#
+	# `backend.railway.internal` assumes the backend service is named
+	# "backend" in Railway. Port 8080 is set explicitly via the PORT env
+	# var on the backend service (see root README).
+	handle /api/* {
+		reverse_proxy http://backend.railway.internal:8080 {
+			header_up Host {upstream_hostport}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# Serve the Vite build, with SPA fallback to index.html for client-side
+	# routes like /login, /admin/users, etc.
+	handle {
+		root * dist
+		encode gzip
+		try_files {path} /index.html
+		file_server
+	}
+}

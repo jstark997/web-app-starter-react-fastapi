@@ -1,0 +1,54 @@
+# ============================================================
+# Root .gitignore — covers both the React frontend and FastAPI
+# backend in this monorepo. Per-folder .gitignore files in
+# frontend/ and backend/ remain in place for tighter scoping.
+# ============================================================
+
+# --- Node / frontend ---------------------------------------------------------
+node_modules/
+dist/
+dist-ssr/
+coverage/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- Python / backend --------------------------------------------------------
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# --- Local databases ---------------------------------------------------------
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# --- Environment files (never commit) ---------------------------------------
+.env
+.env.local
+.env.*.local
+
+# --- Editor / OS -------------------------------------------------------------
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# --- Claude Code -------------------------------------------------------------
+.ignore/
+.claude/settings.local.json
+.claude/projects/

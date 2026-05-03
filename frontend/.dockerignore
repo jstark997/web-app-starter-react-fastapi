@@ -1,0 +1,29 @@
+# Keep the Docker build context small and prevent any local-only files
+# (especially .env.local with VITE_API_BASE_URL pointing at localhost)
+# from bleeding into the production image.
+
+node_modules
+dist
+coverage
+.git
+.gitignore
+
+# Env files — never bake local config into the image. The frontend reads
+# VITE_API_BASE_URL at build time; in prod it stays unset so fetches go
+# to relative /api/* paths (see Caddyfile).
+.env
+.env.*
+
+# Editor / OS
+.DS_Store
+.vscode
+.idea
+
+# Project meta that doesn't belong in the image
+README.md
+CLAUDE.md
+SPEC.md
+DEV-PLAN.md
+.claude
+.claudeignore
+.ignore

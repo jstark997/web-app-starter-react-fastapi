@@ -1,0 +1,11 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*"]
+concurrency = ["thread", "greenlet"]
+
+[tool.coverage.report]
+fail_under = 80

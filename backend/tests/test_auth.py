@@ -1,0 +1,432 @@
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import select
+
+from app.core.security import hash_password, verify_password
+from app.models.token import Token, TokenType
+from app.models.user import User, UserRole
+from app.models.whitelist import WhitelistEntry, WhitelistSettings
+from app.models.session import Session
+
+from tests.conftest import TEST_PASSWORD
+
+
+# --- Login ---
+
+
+async def test_login_success(test_client, test_user):
+    response = await test_client.post(
+        "/api/auth/login",
+        json={"email": "user@test.com", "password": TEST_PASSWORD, "rememberMe": False},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == "user@test.com"
+    assert data["firstName"] == "Test"
+    assert data["lastName"] == "User"
+    assert data["role"] == "user"
+    assert data["isActive"] is True
+    assert data["emailVerified"] is True
+    assert "session_id" in response.cookies
+
+
+async def test_login_sets_cookie(test_client, test_user):
+    response = await test_client.post(
+        "/api/auth/login",
+        json={"email": "user@test.com", "password": TEST_PASSWORD, "rememberMe": False},
+    )
+    assert "session_id" in response.cookies
+
+
+async def test_login_remember_me(test_client, test_user, async_session):
+    response = await test_client.post(
+        "/api/auth/login",
+        json={"email": "user@test.com", "password": TEST_PASSWORD, "rememberMe": True},
+    )
+    assert response.status_code == 200
+    # Check the session has ~30 day expiry
+    result = await async_session.execute(
+        select(Session).where(Session.user_id == test_user.id)
+    )
+    sessions = result.scalars().all()
+    # Find the one with longest expiry (the remember_me one)
+    max_session = max(sessions, key=lambda s: s.expires_at)
+    expected = datetime.now(timezone.utc) + timedelta(days=30)
+    delta = abs((max_session.expires_at.replace(tzinfo=timezone.utc) - expected).total_seconds())
+    assert delta < 5
+
+
+async def test_login_wrong_password(test_client, test_user):
+    response = await test_client.post(
+        "/api/auth/login",
+        json={"email": "user@test.com", "password": "wrongpassword", "rememberMe": False},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid email or password"
+
+
+async def test_login_nonexistent_email(test_client):
+    response = await test_client.post(
+        "/api/auth/login",
+        json={"email": "nobody@test.com", "password": "whatever123", "rememberMe": False},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid email or password"
+
+
+async def test_login_deactivated_account(test_client, async_session):
+    user = User(
+        email="inactive@test.com",
+        password_hash=hash_password(TEST_PASSWORD),
+        first_name="Inactive",
+        last_name="User",
+        role=UserRole.USER,
+        is_active=False,
+        email_verified=True,
+    )
+    async_session.add(user)
+    await async_session.commit()
+
+    response = await test_client.post(
+        "/api/auth/login",
+        json={"email": "inactive@test.com", "password": TEST_PASSWORD, "rememberMe": False},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Account is deactivated"
+
+
+async def test_login_unverified_email(test_client, async_session):
+    user = User(
+        email="unverified@test.com",
+        password_hash=hash_password(TEST_PASSWORD),
+        first_name="Unverified",
+        last_name="User",
+        role=UserRole.USER,
+        is_active=True,
+        email_verified=False,
+    )
+    async_session.add(user)
+    await async_session.commit()
+
+    response = await test_client.post(
+        "/api/auth/login",
+        json={"email": "unverified@test.com", "password": TEST_PASSWORD, "rememberMe": False},
+    )
+    assert response.status_code == 403
+    data = response.json()
+    assert data["detail"]["emailNotVerified"] is True
+
+
+async def test_login_email_case_insensitive(test_client, test_user):
+    response = await test_client.post(
+        "/api/auth/login",
+        json={"email": "USER@TEST.COM", "password": TEST_PASSWORD, "rememberMe": False},
+    )
+    assert response.status_code == 200
+
+
+# --- Register ---
+
+
+async def test_register_success(test_client, mock_email_provider):
+    response = await test_client.post(
+        "/api/auth/register",
+        json={
+            "email": "newuser@test.com",
+            "password": "password123",
+            "firstName": "New",
+            "lastName": "User",
+        },
+    )
+    assert response.status_code == 201
+    assert "verification" in response.json()["detail"].lower() or "check your email" in response.json()["detail"].lower()
+    assert len(mock_email_provider.sent) == 1
+    assert mock_email_provider.sent[0]["to"] == "newuser@test.com"
+
+
+async def test_register_duplicate_email(test_client, test_user):
+    response = await test_client.post(
+        "/api/auth/register",
+        json={
+            "email": "user@test.com",
+            "password": "password123",
+            "firstName": "Dup",
+            "lastName": "User",
+        },
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Email already registered"
+
+
+async def test_register_whitelist_rejection(test_client, async_session, test_admin):
+    ws = WhitelistSettings(id=1, enabled=True)
+    async_session.add(ws)
+    await async_session.commit()
+
+    response = await test_client.post(
+        "/api/auth/register",
+        json={
+            "email": "blocked@test.com",
+            "password": "password123",
+            "firstName": "Blocked",
+            "lastName": "User",
+        },
+    )
+    assert response.status_code == 403
+    data = response.json()
+    assert data["detail"]["whitelistRestricted"] is True
+
+
+async def test_register_whitelist_allowed(test_client, async_session, test_admin, mock_email_provider):
+    ws = WhitelistSettings(id=1, enabled=True)
+    async_session.add(ws)
+    entry = WhitelistEntry(email="allowed@test.com", created_by_id=test_admin.id)
+    async_session.add(entry)
+    await async_session.commit()
+
+    response = await test_client.post(
+        "/api/auth/register",
+        json={
+            "email": "allowed@test.com",
+            "password": "password123",
+            "firstName": "Allowed",
+            "lastName": "User",
+        },
+    )
+    assert response.status_code == 201
+    assert len(mock_email_provider.sent) == 1
+
+
+async def test_register_short_password(test_client):
+    response = await test_client.post(
+        "/api/auth/register",
+        json={
+            "email": "short@test.com",
+            "password": "short",
+            "firstName": "Short",
+            "lastName": "Pass",
+        },
+    )
+    assert response.status_code == 422
+
+
+# --- Verify Email ---
+
+
+async def test_verify_email_success(test_client, async_session, test_user):
+    # Create unverified user with token
+    user = User(
+        email="toverify@test.com",
+        password_hash=hash_password(TEST_PASSWORD),
+        first_name="To",
+        last_name="Verify",
+        role=UserRole.USER,
+        is_active=True,
+        email_verified=False,
+    )
+    async_session.add(user)
+    await async_session.commit()
+    await async_session.refresh(user)
+
+    token = Token(
+        user_id=user.id,
+        token="valid-verification-token",
+        token_type=TokenType.EMAIL_VERIFICATION,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+    )
+    async_session.add(token)
+    await async_session.commit()
+
+    response = await test_client.post(
+        "/api/auth/verify-email",
+        json={"token": "valid-verification-token"},
+    )
+    assert response.status_code == 200
+
+    await async_session.refresh(user)
+    assert user.email_verified is True
+
+    await async_session.refresh(token)
+    assert token.used_at is not None
+
+
+async def test_verify_email_expired_token(test_client, async_session, test_user):
+    token = Token(
+        user_id=test_user.id,
+        token="expired-verification-token",
+        token_type=TokenType.EMAIL_VERIFICATION,
+        expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+    )
+    async_session.add(token)
+    await async_session.commit()
+
+    response = await test_client.post(
+        "/api/auth/verify-email",
+        json={"token": "expired-verification-token"},
+    )
+    assert response.status_code == 400
+
+
+async def test_verify_email_used_token(test_client, async_session, test_user):
+    token = Token(
+        user_id=test_user.id,
+        token="used-verification-token",
+        token_type=TokenType.EMAIL_VERIFICATION,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+        used_at=datetime.now(timezone.utc),
+    )
+    async_session.add(token)
+    await async_session.commit()
+
+    response = await test_client.post(
+        "/api/auth/verify-email",
+        json={"token": "used-verification-token"},
+    )
+    assert response.status_code == 400
+
+
+# --- Resend Verification ---
+
+
+async def test_resend_verification_success(test_client, async_session, mock_email_provider):
+    user = User(
+        email="resend@test.com",
+        password_hash=hash_password(TEST_PASSWORD),
+        first_name="Resend",
+        last_name="User",
+        role=UserRole.USER,
+        is_active=True,
+        email_verified=False,
+    )
+    async_session.add(user)
+    await async_session.commit()
+
+    response = await test_client.post(
+        "/api/auth/resend-verification",
+        json={"email": "resend@test.com"},
+    )
+    assert response.status_code == 200
+    assert len(mock_email_provider.sent) == 1
+
+
+async def test_resend_verification_nonexistent_email(test_client, mock_email_provider):
+    response = await test_client.post(
+        "/api/auth/resend-verification",
+        json={"email": "nobody@test.com"},
+    )
+    assert response.status_code == 200
+    assert len(mock_email_provider.sent) == 0
+
+
+async def test_resend_verification_already_verified(test_client, test_user, mock_email_provider):
+    response = await test_client.post(
+        "/api/auth/resend-verification",
+        json={"email": "user@test.com"},
+    )
+    assert response.status_code == 200
+    assert len(mock_email_provider.sent) == 0
+
+
+# --- Forgot Password ---
+
+
+async def test_forgot_password_existing_user(test_client, test_user, mock_email_provider):
+    response = await test_client.post(
+        "/api/auth/forgot-password",
+        json={"email": "user@test.com"},
+    )
+    assert response.status_code == 200
+    assert len(mock_email_provider.sent) == 1
+
+
+async def test_forgot_password_nonexistent_email(test_client, mock_email_provider):
+    response = await test_client.post(
+        "/api/auth/forgot-password",
+        json={"email": "nobody@test.com"},
+    )
+    assert response.status_code == 200
+    assert len(mock_email_provider.sent) == 0
+
+
+# --- Reset Password ---
+
+
+async def test_reset_password_success(test_client, async_session, test_user):
+    token = Token(
+        user_id=test_user.id,
+        token="valid-reset-token",
+        token_type=TokenType.PASSWORD_RESET,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+    )
+    async_session.add(token)
+    # Also create a session to verify it gets invalidated
+    session = Session(
+        user_id=test_user.id,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+    )
+    async_session.add(session)
+    await async_session.commit()
+
+    response = await test_client.post(
+        "/api/auth/reset-password",
+        json={"token": "valid-reset-token", "password": "newpassword123"},
+    )
+    assert response.status_code == 200
+
+    # Verify password was changed
+    await async_session.refresh(test_user)
+    assert verify_password("newpassword123", test_user.password_hash)
+
+    # Verify token is marked used
+    await async_session.refresh(token)
+    assert token.used_at is not None
+
+    # Verify all sessions invalidated
+    result = await async_session.execute(
+        select(Session).where(Session.user_id == test_user.id)
+    )
+    assert result.scalars().all() == []
+
+
+async def test_reset_password_invalid_token(test_client):
+    response = await test_client.post(
+        "/api/auth/reset-password",
+        json={"token": "nonexistent-token", "password": "newpassword123"},
+    )
+    assert response.status_code == 400
+
+
+# --- Logout ---
+
+
+async def test_logout_success(auth_client):
+    response = await auth_client.post("/api/auth/logout")
+    assert response.status_code == 204
+
+
+async def test_logout_clears_cookie(auth_client):
+    response = await auth_client.post("/api/auth/logout")
+    assert response.status_code == 204
+    # Cookie should be cleared (set to empty or max_age=0)
+    assert "session_id" in response.headers.get("set-cookie", "")
+
+
+async def test_logout_unauthenticated(test_client):
+    response = await test_client.post("/api/auth/logout")
+    assert response.status_code == 401
+
+
+# --- Me ---
+
+
+async def test_me_authenticated(auth_client, test_user):
+    response = await auth_client.get("/api/auth/me")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == "user@test.com"
+    assert data["role"] == "user"
+
+
+async def test_me_unauthenticated(test_client):
+    response = await test_client.get("/api/auth/me")
+    assert response.status_code == 401
