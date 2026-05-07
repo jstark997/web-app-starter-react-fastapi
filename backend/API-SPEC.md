@@ -146,16 +146,16 @@ Sessions are stored server-side in the database. A session ID is issued to the c
 | `role` | Enum | `admin` or `user` |
 | `is_active` | Boolean | Default `true` |
 | `email_verified` | Boolean | Default `false` |
-| `created_at` | DateTime | UTC |
-| `updated_at` | DateTime | UTC, auto-updated |
+| `created_at` | TIMESTAMPTZ | UTC |
+| `updated_at` | TIMESTAMPTZ | UTC, auto-updated |
 
 #### Session
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID | Primary key, used as cookie value |
 | `user_id` | UUID | Foreign key → User |
-| `expires_at` | DateTime | UTC |
-| `created_at` | DateTime | UTC |
+| `expires_at` | TIMESTAMPTZ | UTC |
+| `created_at` | TIMESTAMPTZ | UTC |
 
 #### Token
 Used for email verification and password reset. One table, distinguished by `token_type`.
@@ -166,9 +166,9 @@ Used for email verification and password reset. One table, distinguished by `tok
 | `user_id` | UUID | Foreign key → User |
 | `token` | String | Cryptographically random, unique, indexed |
 | `token_type` | Enum | `email_verification` or `password_reset` |
-| `expires_at` | DateTime | UTC |
-| `used_at` | DateTime | Nullable — set when consumed |
-| `created_at` | DateTime | UTC |
+| `expires_at` | TIMESTAMPTZ | UTC |
+| `used_at` | TIMESTAMPTZ | Nullable — set when consumed |
+| `created_at` | TIMESTAMPTZ | UTC |
 
 #### WhitelistSettings
 A single-row configuration table for the whitelist feature toggle.
@@ -177,14 +177,14 @@ A single-row configuration table for the whitelist feature toggle.
 |---|---|---|
 | `id` | Integer | Always `1` — enforced at application level |
 | `enabled` | Boolean | Default `false` |
-| `updated_at` | DateTime | UTC |
+| `updated_at` | TIMESTAMPTZ | UTC |
 
 #### WhitelistEntry
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID | Primary key |
 | `email` | String | Unique, indexed, lowercase-normalised |
-| `created_at` | DateTime | UTC |
+| `created_at` | TIMESTAMPTZ | UTC |
 | `created_by_id` | UUID | Foreign key → User (the admin who added it) |
 
 ### 3.5 Admin Seeding

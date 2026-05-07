@@ -90,7 +90,8 @@ await provider.send(...)
 
 ### Database & DateTime
 
-- All `DateTime` values are stored and compared in UTC. Never use naive datetimes. Use `datetime.utcnow()` or `datetime.now(timezone.utc)`.
+- All `DateTime` values are stored and compared in UTC. Never use naive datetimes. Always use `datetime.now(timezone.utc)` (not `datetime.utcnow()`, which returns a naive value).
+- All datetime columns must be declared as `DateTime(timezone=True)` (`TIMESTAMPTZ` in Postgres). Plain `DateTime` will work against SQLite locally but break against Postgres + asyncpg, which rejects tz-aware datetimes when bound to a `TIMESTAMP WITHOUT TIME ZONE` column.
 - All database queries use the async SQLAlchemy session (`AsyncSession`). Never use synchronous session methods.
 - The `get_db` dependency yields an `AsyncSession` — always use it via `Depends(get_db)`, never instantiate sessions manually in route handlers or services.
 
@@ -176,9 +177,9 @@ Session behaviour, cookie flags, and expiry rules are fully documented in `API-S
 Token security rules are documented in `API-SPEC.md` section 4.3.
 
 **Critical implementation notes:**
-- On consumption, set `token.used_at = datetime.utcnow()` — never delete the token record.
+- On consumption, set `token.used_at = datetime.now(timezone.utc)` — never delete the token record.
 - Before issuing a new token of a given type for a user, invalidate any existing unused tokens of that type first. This prevents accumulation of orphaned tokens.
-- Check both conditions: `token.used_at is None` **and** `token.expires_at > datetime.utcnow()`. A token that passes only one check is still invalid.
+- Check both conditions: `token.used_at is None` **and** `token.expires_at > datetime.now(timezone.utc)`. A token that passes only one check is still invalid.
 
 ---
 
