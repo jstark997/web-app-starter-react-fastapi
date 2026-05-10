@@ -1124,7 +1124,6 @@ pytest -v
 |---|---|---|
 | `ENVIRONMENT` | Deployment environment: `development`, `production`, or `test`. When `production`, the app refuses to boot unless `DATABASE_URL` is a `postgresql://` URL. | `development` |
 | `DATABASE_URL` | SQLAlchemy database URL | `sqlite+aiosqlite:///./dev.db` |
-| `SECRET_KEY` | Secret key for token signing (min 32 chars) | `your-secret-key-here` |
 | `FRONTEND_URL` | Base URL of the frontend (used in email links) | `http://localhost:5173` |
 | `ALLOWED_ORIGINS` | Comma-separated list of allowed CORS origins | `http://localhost:5173` |
 | `EMAIL_PROVIDER` | Email provider to use: `smtp`, `resend`, `mock` | `smtp` |

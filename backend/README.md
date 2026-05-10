@@ -55,7 +55,6 @@ cp .env.example .env
 
 Open `.env` and at a minimum set:
 
-- `SECRET_KEY` — generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"`
 - `DATABASE_URL` — leave the SQLite default for development, or point at PostgreSQL for production
 - `EMAIL_PROVIDER` — set to `mock` for local development if you do not want to send real email
 - `FRONTEND_URL` and `ALLOWED_ORIGINS` — adjust if your frontend is not on `http://localhost:5173`
@@ -173,7 +172,6 @@ ADMIN_LAST_NAME=User
 |---|---|---|
 | `ENVIRONMENT` | Deployment environment: `development`, `production`, or `test`. When `production`, the app refuses to boot unless `DATABASE_URL` is a `postgresql://` URL. | `development` |
 | `DATABASE_URL` | SQLAlchemy async database URL | `sqlite+aiosqlite:///./dev.db` |
-| `SECRET_KEY` | Secret key for cryptographic signing (min 32 chars) | `your-secret-key-here` |
 | `FRONTEND_URL` | Base URL of the frontend, used in email links (no trailing slash) | `http://localhost:5173` |
 | `ALLOWED_ORIGINS` | Comma-separated list of allowed CORS origins | `http://localhost:5173` |
 | `EMAIL_PROVIDER` | Email provider: `smtp`, `resend`, or `mock` | `smtp` |

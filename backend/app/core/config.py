@@ -9,7 +9,6 @@ class Settings(BaseSettings):
 
     environment: Literal["development", "production", "test"] = "development"
     database_url: str = "sqlite+aiosqlite:///./dev.db"
-    secret_key: str = "change-me-to-a-random-secret-at-least-32-chars"
     frontend_url: str = "http://localhost:5173"
     allowed_origins: str = "http://localhost:5173"
 
