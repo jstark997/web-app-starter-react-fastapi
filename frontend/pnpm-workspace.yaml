@@ -1,0 +1,6 @@
+allowBuilds:
+  # msw ships a postinstall that writes public/mockServiceWorker.js so the
+  # browser can intercept fetches at runtime. We use msw only for unit tests
+  # via Vitest/jsdom (no service worker), and the production build has no
+  # business shipping a fetch-intercepting worker. Deny the build.
+  msw: false
