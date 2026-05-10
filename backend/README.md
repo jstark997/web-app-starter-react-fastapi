@@ -13,6 +13,7 @@ It is the backend half of a two-project starter system. The companion frontend i
 - Optional registration whitelist (toggleable at runtime)
 - Provider-agnostic email layer with SMTP, Resend, and mock providers built in
 - Rate limiting on sensitive auth endpoints
+- Structured JSON security event logging (login attempts, admin actions, session invalidations) — see [`API-SPEC.md` §6.6](./API-SPEC.md#66-security-event-logging)
 - Async SQLAlchemy 2.x with Alembic migrations
 - Pytest test suite with ≥ 80% coverage gate
 
@@ -184,6 +185,7 @@ ADMIN_LAST_NAME=User
 | `RESEND_API_KEY` | Resend API key (`resend` only) | `re_...` |
 | `SESSION_COOKIE_SECURE` | Set the `Secure` flag on the session cookie (use `true` in production over HTTPS) | `false` |
 | `RATE_LIMIT_ENABLED` | Enable rate limiting on auth endpoints (set `false` in tests) | `true` |
+| `LOG_FORMAT` | Log output format: `json` (one structured JSON object per line — recommended for any deployed environment) or `plain` (human-readable, easier to scan locally) | `json` |
 | `ADMIN_EMAIL` | Seed admin email — set all four `ADMIN_*` vars to seed | `admin@example.com` |
 | `ADMIN_PASSWORD` | Seed admin password | `change-me-immediately` |
 | `ADMIN_FIRST_NAME` | Seed admin first name | `Admin` |

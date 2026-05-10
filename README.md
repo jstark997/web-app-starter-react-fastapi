@@ -145,6 +145,7 @@ Why this shape: same public origin → no CORS, no cross-site cookies, no leaked
 | `SESSION_COOKIE_SAMESITE` | `lax`                                                          | Same-origin via Caddy means `lax` is correct.                         |
 | `EMAIL_PROVIDER`          | `smtp` / `resend` / `mock`                                     | Plus the matching provider creds (see `backend/.env.example`).        |
 | `RATE_LIMIT_ENABLED`      | `true`                                                         |                                                                       |
+| `LOG_FORMAT`              | `json`                                                         | Emits one structured JSON line per log record so security events (e.g. `event=auth.login.failure`) can be filtered in Railway's log explorer. See [`backend/API-SPEC.md` §6.6](./backend/API-SPEC.md#66-security-event-logging) for the full event schema. |
 | `ADMIN_*` (optional)      | seed an admin on first deploy                                  | See `backend/.env.example`.                                           |
 
 The `backend/railway.json` already wires up:

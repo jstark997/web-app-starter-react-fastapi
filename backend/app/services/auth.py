@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
@@ -11,6 +12,15 @@ from app.core.email import (
     send_verification_email,
 )
 from app.core.security import generate_token, hash_password, verify_password
+from app.core.security_log import (
+    log_email_change_completed,
+    log_email_verified,
+    log_login_failure,
+    log_login_success,
+    log_password_reset_completed,
+    log_password_reset_requested,
+    log_register,
+)
 from app.models.token import Token, TokenType
 from app.models.user import User, UserRole
 from app.services import whitelist as whitelist_service
@@ -22,18 +32,22 @@ async def login(
     email: str,
     password: str,
     remember_me: bool,
+    client_ip: str,
 ):
     email = email.lower()
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
     if user is None or not verify_password(password, user.password_hash):
+        log_login_failure(email, client_ip, "invalid_credentials")
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     if not user.is_active:
+        log_login_failure(email, client_ip, "account_deactivated")
         raise HTTPException(status_code=401, detail="Account is deactivated")
 
     if not user.email_verified:
+        log_login_failure(email, client_ip, "email_unverified")
         raise HTTPException(
             status_code=403,
             detail={
@@ -43,6 +57,7 @@ async def login(
         )
 
     session = await create_session(db, user.id, remember_me)
+    log_login_success(user.id, client_ip)
     return user, session
 
 
@@ -53,6 +68,7 @@ async def register(
     password: str,
     first_name: str,
     last_name: str,
+    client_ip: str,
 ):
     email = email.lower()
 
@@ -77,6 +93,8 @@ async def register(
     await db.commit()
     await db.refresh(user)
 
+    log_register(user.id, email, client_ip)
+
     # Generate verification token and send email
     await _create_and_send_verification_token(db, email_provider, user)
 
@@ -89,7 +107,11 @@ async def verify_email(db: AsyncSession, token_str: str):
     # If this token was issued for a change-email flow, swap the user's email.
     # We re-check uniqueness here in case another account claimed the address
     # between when the token was issued and when it was consumed.
-    if token.new_email is not None:
+    is_email_change = token.new_email is not None
+    old_email = token.user.email if is_email_change else None
+    new_email = token.new_email if is_email_change else None
+
+    if is_email_change:
         existing = await db.execute(
             select(User).where(User.email == token.new_email, User.id != token.user_id)
         )
@@ -99,6 +121,10 @@ async def verify_email(db: AsyncSession, token_str: str):
 
     token.user.email_verified = True
     await db.commit()
+
+    log_email_verified(token.user_id)
+    if is_email_change:
+        log_email_change_completed(token.user_id, old_email, new_email)
 
 
 async def resend_verification(
@@ -122,6 +148,7 @@ async def forgot_password(
     db: AsyncSession,
     email_provider: EmailProvider,
     email: str,
+    client_ip: str,
 ):
     email = email.lower()
     result = await db.execute(select(User).where(User.email == email))
@@ -143,6 +170,8 @@ async def forgot_password(
     db.add(token)
     await db.commit()
 
+    log_password_reset_requested(user.id, client_ip)
+
     reset_url = f"{settings.frontend_url}/reset-password?token={token_value}"
     await send_password_reset_email(email_provider, user.email, reset_url)
 
@@ -154,11 +183,12 @@ async def reset_password(db: AsyncSession, token_str: str, new_password: str):
     token.user.password_hash = hash_password(new_password)
     await db.commit()
 
-    await invalidate_all_sessions(db, token.user_id)
+    await invalidate_all_sessions(db, token.user_id, reason="password_reset")
+    log_password_reset_completed(token.user_id)
 
 
-async def logout(db: AsyncSession, session_id):
-    await invalidate_session(db, session_id)
+async def logout(db: AsyncSession, session_id: uuid.UUID, user_id: uuid.UUID):
+    await invalidate_session(db, session_id, user_id, reason="logout")
 
 
 # --- Private helpers ---

@@ -1,9 +1,6 @@
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-
-logging.basicConfig(level=logging.INFO)
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
@@ -12,10 +9,13 @@ from app.api.users import router as users_router
 from app.api.whitelist import router as whitelist_router
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
+from app.core.logging_config import configure_logging
 from app.core.rate_limit import register_rate_limiter
 from app.dependencies.providers import get_email_provider
 from app.services import whitelist as whitelist_service
 from app.services.seed import seed_admin_user
+
+configure_logging(settings.log_format)
 
 
 @asynccontextmanager

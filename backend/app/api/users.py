@@ -60,6 +60,7 @@ async def create_user(
     user = await admin_service.create_user(
         db,
         email_provider,
+        admin,
         body.email,
         body.first_name,
         body.last_name,
@@ -117,5 +118,5 @@ async def force_password_reset(
     db: AsyncSession = Depends(get_db),
     email_provider: EmailProvider = Depends(get_email_provider),
 ):
-    await admin_service.force_password_reset(db, email_provider, user_id)
+    await admin_service.force_password_reset(db, email_provider, admin, user_id)
     return MessageResponse(detail="Password reset email sent.")

@@ -33,7 +33,7 @@ async def update_whitelist_settings(
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    settings_row = await whitelist_service.update_settings(db, body.enabled)
+    settings_row = await whitelist_service.update_settings(db, body.enabled, admin.id)
     return WhitelistSettingsResponse.model_validate(settings_row)
 
 
@@ -65,4 +65,4 @@ async def delete_whitelist_entry(
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    await whitelist_service.delete_entry(db, entry_id)
+    await whitelist_service.delete_entry(db, entry_id, admin.id)

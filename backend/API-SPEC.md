@@ -917,6 +917,61 @@ The following endpoints always return the same response regardless of whether th
 
 The login endpoint returns a single generic error for both "user not found" and "wrong password" cases.
 
+### 6.6 Security Event Logging
+
+The application emits a structured event on every security-relevant action. Events are written to the dedicated `app.security` logger and rendered as one JSON object per line by default, so they can be filtered in any log explorer (e.g. Railway's) by the `event` field.
+
+Implementation:
+- Logger configuration: `app/core/logging_config.py` (`configure_logging()` + `JsonFormatter`). Output format is selected by the `LOG_FORMAT` env var — `json` (default) or `plain`.
+- Event helpers: `app/core/security_log.py`. Each helper wraps `logger.info(<event>, extra={...})` so the payload is structured rather than positional.
+- Plaintext passwords and token strings are never logged. Emails and user IDs are.
+
+Every JSON event line includes these base fields:
+
+| Field | Description |
+|---|---|
+| `timestamp` | ISO-8601 UTC timestamp |
+| `level` | Always `INFO` for security events |
+| `logger` | Always `app.security` for events in this table |
+| `message` | Same value as `event` (kept for compatibility with simple log readers) |
+| `event` | Stable event name — use this to filter |
+
+#### Events
+
+| Event | Fired when | Additional fields |
+|---|---|---|
+| `auth.login.success` | Credentials accepted, session issued | `user_id`, `ip` |
+| `auth.login.failure` | Login rejected | `email`, `ip`, `reason` (`invalid_credentials` \| `account_deactivated` \| `email_unverified`) |
+| `auth.register` | New account created via public registration | `user_id`, `email`, `ip` |
+| `auth.email_verified` | Email verification token consumed | `user_id` |
+| `auth.password_reset.requested` | `forgot-password` request matched a real, active user | `user_id`, `ip` |
+| `auth.password_reset.completed` | Password reset token consumed and password updated | `user_id` |
+| `auth.password_change` | Authenticated user changed their own password | `user_id` |
+| `auth.email_change.requested` | Authenticated user requested an email change | `user_id`, `old_email`, `new_email` |
+| `auth.email_change.completed` | Email-change verification token consumed and address swapped | `user_id`, `old_email`, `new_email` |
+| `admin.user.created` | Admin created a new user | `actor_id`, `target_id` |
+| `admin.user.updated` | Admin patched a user record | `actor_id`, `target_id`, `fields` (sorted list of changed field names) |
+| `admin.user.deleted` | Admin deleted a user | `actor_id`, `target_id` |
+| `admin.user.deactivated` | Admin set `is_active=false` on a user | `actor_id`, `target_id` |
+| `admin.user.reactivated` | Admin set `is_active=true` on a user | `actor_id`, `target_id` |
+| `admin.user.force_password_reset` | Admin issued a forced password-reset email | `actor_id`, `target_id` |
+| `whitelist.toggled` | Admin enabled or disabled the whitelist | `actor_id`, `enabled` |
+| `whitelist.added` | Admin added an email to the whitelist | `actor_id`, `email` |
+| `whitelist.deleted` | Admin removed an email from the whitelist | `actor_id`, `email` |
+| `session.invalidated` | Sessions deleted (logout, password change, password reset, admin action, whitelist removal) | `user_id`, `reason`, `count` |
+
+`session.invalidated` `reason` values: `logout`, `password_change`, `password_reset`, `admin_deactivated`, `admin_deleted`, `whitelist_removed`. `count` is the number of session rows actually deleted.
+
+#### Sample line
+
+```json
+{"timestamp":"2026-05-10T04:46:18.515924+00:00","level":"INFO","logger":"app.security","message":"auth.login.failure","event":"auth.login.failure","email":"attacker@example.com","ip":"203.0.113.42","reason":"invalid_credentials"}
+```
+
+#### Adding new events
+
+When adding a security-relevant action (e.g. MFA enrolment, API token issuance), add a corresponding `log_*()` helper to `app/core/security_log.py` with a stable `<domain>.<action>` event name and call it from the service layer after the action commits — never from a route handler. Test with `caplog` using the patterns in `tests/test_security_log.py`.
+
 ---
 
 ## 7. Email Notifications
@@ -1136,6 +1191,7 @@ pytest -v
 | `RESEND_API_KEY` | Resend API key (`resend` provider only) | `re_...` |
 | `SESSION_COOKIE_SECURE` | Set cookie `Secure` flag (`true` in production) | `false` |
 | `RATE_LIMIT_ENABLED` | Enable/disable rate limiting (disable in tests) | `true` |
+| `LOG_FORMAT` | Log output format: `json` (one JSON object per line, recommended for any deployed environment so log explorers can filter by the `event` field) or `plain` (human-readable, easier to scan during local development) | `json` |
 | `ADMIN_EMAIL` | Seed admin email (optional — set all four `ADMIN_*` vars to seed) | `admin@example.com` |
 | `ADMIN_PASSWORD` | Seed admin password | `change-me-immediately` |
 | `ADMIN_FIRST_NAME` | Seed admin first name | `Admin` |
@@ -1151,7 +1207,7 @@ The following concerns are explicitly out of scope for `fastapi-starter` and are
 
 - OAuth / social login (Google, GitHub, etc.)
 - Multi-factor authentication (MFA / TOTP)
-- Audit logging
+- Audit logging beyond the structured security event log described in section 6.6 (e.g. tamper-evident append-only audit trails, durable storage, retention policies)
 - File uploads (avatar images are accepted as URLs only)
 - WebSockets or real-time features
 - Background task queues (e.g. Celery, ARQ)

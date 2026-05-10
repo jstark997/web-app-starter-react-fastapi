@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.email import EmailProvider
-from app.core.rate_limit import limiter
+from app.core.rate_limit import get_client_ip, limiter
 from app.dependencies.auth import get_current_user
 from app.dependencies.providers import get_email_provider
 from app.models.user import User
@@ -36,7 +36,7 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ):
     user, session = await auth_service.login(
-        db, body.email, body.password, body.remember_me
+        db, body.email, body.password, body.remember_me, get_client_ip(request)
     )
 
     max_age = int((session.expires_at - session.created_at).total_seconds())
@@ -61,7 +61,7 @@ async def logout(
 ):
     import uuid
     session_id = uuid.UUID(request.cookies.get("session_id"))
-    await auth_service.logout(db, session_id)
+    await auth_service.logout(db, session_id, user.id)
     response.delete_cookie(
         key="session_id",
         httponly=True,
@@ -84,7 +84,13 @@ async def register(
     email_provider: EmailProvider = Depends(get_email_provider),
 ):
     await auth_service.register(
-        db, email_provider, body.email, body.password, body.first_name, body.last_name
+        db,
+        email_provider,
+        body.email,
+        body.password,
+        body.first_name,
+        body.last_name,
+        get_client_ip(request),
     )
     return MessageResponse(
         detail="Registration successful. Please check your email to verify your account."
@@ -122,7 +128,9 @@ async def forgot_password(
     db: AsyncSession = Depends(get_db),
     email_provider: EmailProvider = Depends(get_email_provider),
 ):
-    await auth_service.forgot_password(db, email_provider, body.email)
+    await auth_service.forgot_password(
+        db, email_provider, body.email, get_client_ip(request)
+    )
     return MessageResponse(
         detail="If an account with that email exists, a password reset link has been sent."
     )

@@ -13,6 +13,14 @@ from app.core.email import (
     send_password_reset_email,
 )
 from app.core.security import generate_token, hash_password
+from app.core.security_log import (
+    log_admin_force_password_reset,
+    log_admin_user_created,
+    log_admin_user_deactivated,
+    log_admin_user_deleted,
+    log_admin_user_reactivated,
+    log_admin_user_updated,
+)
 from app.models.token import Token, TokenType
 from app.models.user import User, UserRole
 from app.services.session import invalidate_all_sessions
@@ -94,6 +102,7 @@ async def get_user(db: AsyncSession, user_id: uuid.UUID) -> User:
 async def create_user(
     db: AsyncSession,
     email_provider: EmailProvider,
+    current_user: User,
     email: str,
     first_name: str,
     last_name: str,
@@ -120,6 +129,8 @@ async def create_user(
     db.add(user)
     await db.commit()
     await db.refresh(user)
+
+    log_admin_user_created(current_user.id, user.id)
 
     if send_invitation:
         await _invalidate_unused_tokens(db, user.id, TokenType.PASSWORD_RESET)
@@ -179,8 +190,10 @@ async def update_user(
     await db.commit()
     await db.refresh(user)
 
+    log_admin_user_updated(current_user.id, user.id, list(fields_set))
+
     if deactivating:
-        await invalidate_all_sessions(db, user.id)
+        await invalidate_all_sessions(db, user.id, reason="admin_deactivated")
 
     return user
 
@@ -195,7 +208,8 @@ async def delete_user(
 
     user = await get_user(db, user_id)
 
-    await invalidate_all_sessions(db, user.id)
+    log_admin_user_deleted(current_user.id, user.id)
+    await invalidate_all_sessions(db, user.id, reason="admin_deleted")
     await db.delete(user)
     await db.commit()
 
@@ -217,7 +231,8 @@ async def deactivate_user(
     await db.commit()
     await db.refresh(user)
 
-    await invalidate_all_sessions(db, user.id)
+    log_admin_user_deactivated(current_user.id, user.id)
+    await invalidate_all_sessions(db, user.id, reason="admin_deactivated")
 
     return user
 
@@ -236,12 +251,15 @@ async def reactivate_user(
     await db.commit()
     await db.refresh(user)
 
+    log_admin_user_reactivated(current_user.id, user.id)
+
     return user
 
 
 async def force_password_reset(
     db: AsyncSession,
     email_provider: EmailProvider,
+    current_user: User,
     user_id: uuid.UUID,
 ) -> None:
     user = await get_user(db, user_id)
@@ -257,6 +275,8 @@ async def force_password_reset(
     )
     db.add(token)
     await db.commit()
+
+    log_admin_force_password_reset(current_user.id, user.id)
 
     reset_url = f"{settings.frontend_url}/reset-password?token={token_value}"
     await send_password_reset_email(email_provider, user.email, reset_url)

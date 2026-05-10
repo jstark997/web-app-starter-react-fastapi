@@ -50,7 +50,7 @@ async def test_get_session_returns_none_for_expired(async_session, test_user):
 
 async def test_invalidate_session(async_session, test_user):
     session = await create_session(async_session, test_user.id)
-    await invalidate_session(async_session, session.id)
+    await invalidate_session(async_session, session.id, test_user.id, reason="logout")
     result = await get_session(async_session, session.id)
     assert result is None
 
@@ -58,10 +58,10 @@ async def test_invalidate_session(async_session, test_user):
 async def test_invalidate_all_sessions(async_session, test_user):
     await create_session(async_session, test_user.id)
     await create_session(async_session, test_user.id)
-    await invalidate_all_sessions(async_session, test_user.id)
+    await invalidate_all_sessions(async_session, test_user.id, reason="test")
     # Verify both are gone by trying to create and check a new one
     s = await create_session(async_session, test_user.id)
-    await invalidate_session(async_session, s.id)
+    await invalidate_session(async_session, s.id, test_user.id, reason="test")
     # Direct check: no sessions remain
     from sqlalchemy import select
     result = await async_session.execute(

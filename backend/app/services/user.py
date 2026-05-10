@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.email import EmailProvider, send_email_change_verification_email
 from app.core.security import generate_token, hash_password, verify_password
+from app.core.security_log import log_email_change_requested, log_password_change
 from app.models.token import Token, TokenType
 from app.models.user import User
 from app.services.session import invalidate_all_sessions
@@ -67,6 +68,8 @@ async def change_email(
     db.add(token)
     await db.commit()
 
+    log_email_change_requested(user.id, user.email, new_email)
+
     verification_url = f"{settings.frontend_url}/verify-email?token={token_value}"
     await send_email_change_verification_email(email_provider, new_email, verification_url)
 
@@ -84,4 +87,10 @@ async def change_password(
     user.password_hash = hash_password(new_password)
     await db.commit()
 
-    await invalidate_all_sessions(db, user.id, except_session_id=current_session_id)
+    await invalidate_all_sessions(
+        db,
+        user.id,
+        reason="password_change",
+        except_session_id=current_session_id,
+    )
+    log_password_change(user.id)

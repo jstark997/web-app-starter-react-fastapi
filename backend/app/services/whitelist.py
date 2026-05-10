@@ -4,6 +4,11 @@ from fastapi import HTTPException
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security_log import (
+    log_whitelist_added,
+    log_whitelist_deleted,
+    log_whitelist_toggled,
+)
 from app.models.user import User
 from app.models.whitelist import WhitelistEntry, WhitelistSettings
 from app.services.session import invalidate_all_sessions
@@ -20,13 +25,16 @@ async def get_or_create_settings(db: AsyncSession) -> WhitelistSettings:
     return settings_row
 
 
-async def update_settings(db: AsyncSession, enabled: bool) -> WhitelistSettings:
+async def update_settings(
+    db: AsyncSession, enabled: bool, actor_id: uuid.UUID
+) -> WhitelistSettings:
     settings_row = await get_or_create_settings(db)
     if settings_row.enabled == enabled:
         return settings_row
     settings_row.enabled = enabled
     await db.commit()
     await db.refresh(settings_row)
+    log_whitelist_toggled(actor_id, enabled)
     return settings_row
 
 
@@ -55,10 +63,13 @@ async def add_entry(
     db.add(entry)
     await db.commit()
     await db.refresh(entry)
+    log_whitelist_added(created_by_id, email)
     return entry
 
 
-async def delete_entry(db: AsyncSession, entry_id: uuid.UUID) -> None:
+async def delete_entry(
+    db: AsyncSession, entry_id: uuid.UUID, actor_id: uuid.UUID
+) -> None:
     result = await db.execute(select(WhitelistEntry).where(WhitelistEntry.id == entry_id))
     entry = result.scalar_one_or_none()
     if entry is None:
@@ -69,12 +80,14 @@ async def delete_entry(db: AsyncSession, entry_id: uuid.UUID) -> None:
     await db.execute(delete(WhitelistEntry).where(WhitelistEntry.id == entry_id))
     await db.commit()
 
+    log_whitelist_deleted(actor_id, removed_email)
+
     settings_row = await get_or_create_settings(db)
     if settings_row.enabled:
         user_result = await db.execute(select(User).where(User.email == removed_email))
         user = user_result.scalar_one_or_none()
         if user is not None:
-            await invalidate_all_sessions(db, user.id)
+            await invalidate_all_sessions(db, user.id, reason="whitelist_removed")
 
 
 async def assert_email_allowed(db: AsyncSession, email: str) -> None:

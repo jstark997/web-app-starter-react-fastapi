@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     session_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
     rate_limit_enabled: bool = True
 
+    log_format: Literal["json", "plain"] = "json"
+
     # Admin seed (optional — set all four to create a default admin on first startup)
     admin_email: str | None = None
     admin_password: str | None = None

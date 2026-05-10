@@ -5,6 +5,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.security_log import log_session_invalidated
 from app.models.session import Session
 
 
@@ -34,18 +35,28 @@ async def get_session(
     return result.scalar_one_or_none()
 
 
-async def invalidate_session(db: AsyncSession, session_id: uuid.UUID) -> None:
-    await db.execute(delete(Session).where(Session.id == session_id))
+async def invalidate_session(
+    db: AsyncSession,
+    session_id: uuid.UUID,
+    user_id: uuid.UUID,
+    reason: str,
+) -> None:
+    result = await db.execute(delete(Session).where(Session.id == session_id))
     await db.commit()
+    count = result.rowcount if result.rowcount is not None and result.rowcount >= 0 else 0
+    log_session_invalidated(user_id, reason, count)
 
 
 async def invalidate_all_sessions(
     db: AsyncSession,
     user_id: uuid.UUID,
+    reason: str,
     except_session_id: uuid.UUID | None = None,
 ) -> None:
     stmt = delete(Session).where(Session.user_id == user_id)
     if except_session_id is not None:
         stmt = stmt.where(Session.id != except_session_id)
-    await db.execute(stmt)
+    result = await db.execute(stmt)
     await db.commit()
+    count = result.rowcount if result.rowcount is not None and result.rowcount >= 0 else 0
+    log_session_invalidated(user_id, reason, count)
