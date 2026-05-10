@@ -1,12 +1,13 @@
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    environment: Literal["development", "production", "test"] = "development"
     database_url: str = "sqlite+aiosqlite:///./dev.db"
     secret_key: str = "change-me-to-a-random-secret-at-least-32-chars"
     frontend_url: str = "http://localhost:5173"
@@ -45,6 +46,19 @@ class Settings(BaseSettings):
         if value.startswith("postgresql://"):
             return "postgresql+asyncpg://" + value[len("postgresql://") :]
         return value
+
+    @model_validator(mode="after")
+    def _require_postgres_in_production(self) -> "Settings":
+        # Guard against a production deploy that forgets to inject DATABASE_URL
+        # and silently falls back to the ephemeral SQLite default. Migrations
+        # would succeed, the app would boot, and the first write would vanish
+        # on the next deploy.
+        if self.environment == "production" and not self.database_url.startswith("postgresql"):
+            raise ValueError(
+                "ENVIRONMENT=production requires DATABASE_URL to be a postgresql:// URL; "
+                f"got {self.database_url!r}, which would silently use an ephemeral SQLite file."
+            )
+        return self
 
     @property
     def allowed_origins_list(self) -> list[str]:

@@ -138,6 +138,7 @@ Why this shape: same public origin → no CORS, no cross-site cookies, no leaked
 | Variable                  | Value                                                          | Notes                                                                 |
 |---------------------------|----------------------------------------------------------------|-----------------------------------------------------------------------|
 | `PORT`                    | `8080`                                                         | Must match the port in `frontend/Caddyfile`'s `reverse_proxy` line.   |
+| `ENVIRONMENT`             | `production`                                                   | Required. Setting this enables a startup check that refuses to boot unless `DATABASE_URL` is a `postgresql://` URL — guards against silent SQLite fallback if the Postgres plugin link is missing. |
 | `DATABASE_URL`            | *(auto-injected by Postgres plugin)*                           | App rewrites `postgresql://` → `postgresql+asyncpg://` automatically. |
 | `SECRET_KEY`              | generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"` |                                                                       |
 | `FRONTEND_URL`            | `https://<frontend-service>.up.railway.app`                    | Used in outgoing email links.                                         |
