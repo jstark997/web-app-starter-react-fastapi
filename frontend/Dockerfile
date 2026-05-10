@@ -19,7 +19,10 @@ RUN corepack enable
 WORKDIR /app
 
 # Install dependencies first for better Docker layer caching.
-COPY package.json pnpm-lock.yaml ./
+# pnpm-workspace.yaml carries the `allowBuilds` config (pnpm 11) — it
+# must be present at install time so pnpm knows which package build
+# scripts are approved or denied.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 # Copy source and build. VITE_API_BASE_URL is intentionally not passed
