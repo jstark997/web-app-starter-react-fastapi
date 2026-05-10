@@ -16,8 +16,16 @@ def log_login_failure(email: str, ip: str, reason: str) -> None:
     _emit("auth.login.failure", email=email, ip=ip, reason=reason)
 
 
+def log_login_unverified(user_id: uuid.UUID, ip: str) -> None:
+    _emit("auth.login.unverified", user_id=str(user_id), ip=ip)
+
+
 def log_register(user_id: uuid.UUID, email: str, ip: str) -> None:
     _emit("auth.register", user_id=str(user_id), email=email, ip=ip)
+
+
+def log_register_duplicate_attempt(email: str, ip: str) -> None:
+    _emit("auth.register.duplicate_attempt", email=email, ip=ip)
 
 
 def log_email_verified(user_id: uuid.UUID) -> None:

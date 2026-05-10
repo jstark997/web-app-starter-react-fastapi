@@ -99,24 +99,24 @@ describe('RegisterPage', () => {
     });
   });
 
-  it('maps field errors from server to form fields', async () => {
+  it('shows generic success screen for already-registered emails', async () => {
+    // The backend no longer differentiates duplicate emails from new ones —
+    // both responses are 201 with the generic "check your email" message.
     const user = userEvent.setup();
-    const error = new ApiError('Validation failed', 422, [
-      { field: 'email', message: 'Email already registered.' },
-    ]);
-    mockRegister.mockRejectedValue(error);
+    mockRegister.mockResolvedValue(undefined);
     renderRegister();
 
     await user.type(screen.getByLabelText('First name'), 'John');
     await user.type(screen.getByLabelText('Last name'), 'Doe');
-    await user.type(screen.getByLabelText('Email address'), 'john@example.com');
+    await user.type(screen.getByLabelText('Email address'), 'existing@example.com');
     await user.type(screen.getByLabelText('Password'), 'password123');
     await user.type(screen.getByLabelText('Confirm password'), 'password123');
     await user.click(screen.getByRole('button', { name: 'Create account' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Email already registered.')).toBeInTheDocument();
+      expect(screen.getByText('Check your email')).toBeInTheDocument();
     });
+    expect(screen.queryByText('Email already registered.')).not.toBeInTheDocument();
   });
 
   it('has link to sign in', () => {

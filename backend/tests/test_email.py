@@ -6,6 +6,7 @@ import pytest
 from app.core.email import (
     EmailDeliveryError,
     EmailProvider,
+    send_duplicate_registration_attempt_email,
     send_email_change_verification_email,
     send_invitation_email,
     send_password_reset_email,
@@ -78,6 +79,25 @@ async def test_send_invitation_email():
     assert url in msg["text_body"]
     assert url in msg["html_body"]
     assert "24 hours" in msg["text_body"]
+
+
+async def test_send_duplicate_registration_attempt_email():
+    provider = MockEmailProvider()
+    login_url = "https://example.com/login"
+    forgot_url = "https://example.com/forgot-password"
+    await send_duplicate_registration_attempt_email(
+        provider, "user@example.com", login_url, forgot_url
+    )
+    assert len(provider.sent) == 1
+    msg = provider.sent[0]
+    assert msg["to"] == "user@example.com"
+    assert msg["subject"] == "Someone tried to create an account with your email"
+    assert login_url in msg["text_body"]
+    assert login_url in msg["html_body"]
+    assert forgot_url in msg["text_body"]
+    assert forgot_url in msg["html_body"]
+    assert "already have an account" in msg["text_body"]
+    assert "already have an account" in msg["html_body"]
 
 
 async def test_send_email_change_verification_email():

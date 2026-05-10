@@ -80,6 +80,34 @@ async def send_invitation_email(
     await provider.send(to_email, subject, html_body, text_body)
 
 
+async def send_duplicate_registration_attempt_email(
+    provider: EmailProvider,
+    to_email: str,
+    login_url: str,
+    forgot_password_url: str,
+) -> None:
+    subject = "Someone tried to create an account with your email"
+    text_body = (
+        "Someone just tried to create a new account using your email address. "
+        "You already have an account with us, so no new account was created.\n\n"
+        "If this was you, you can sign in here:\n"
+        f"{login_url}\n\n"
+        "If you've forgotten your password, you can reset it here:\n"
+        f"{forgot_password_url}\n\n"
+        "If this wasn't you, you can safely ignore this email. No action is required."
+    )
+    html_body = (
+        "<p>Someone just tried to create a new account using your email address. "
+        "You already have an account with us, so no new account was created.</p>"
+        "<p>If this was you, you can sign in here:</p>"
+        f'<p><a href="{login_url}">Sign in</a></p>'
+        "<p>If you've forgotten your password, you can reset it here:</p>"
+        f'<p><a href="{forgot_password_url}">Reset password</a></p>'
+        "<p>If this wasn't you, you can safely ignore this email. No action is required.</p>"
+    )
+    await provider.send(to_email, subject, html_body, text_body)
+
+
 async def send_email_change_verification_email(
     provider: EmailProvider,
     to_email: str,

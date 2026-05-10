@@ -289,10 +289,12 @@ Authenticates a user and creates a session.
 ```
 Sets `session_id` cookie on the response.
 
+**Behaviour:**
+- Unknown email, wrong password, **and** deactivated accounts all return the same generic 401. This prevents an unauthenticated attacker from using login responses to confirm valid `email:password` pairs or to enumerate deactivated accounts.
+- An unverified account **can** log in (session is issued and 200 returned). The frontend route guard redirects unverified users to `/verify-pending` until they verify their address, so `emailVerified` is surfaced post-login rather than via a differentiated error response.
+
 **Error responses:**
-- `401 Unauthorized` — invalid email or password (use the same message for both cases to prevent email enumeration)
-- `401 Unauthorized` — account is deactivated
-- `403 Forbidden` — email not verified (include `"emailNotVerified": true` in detail to allow frontend to prompt re-send)
+- `401 Unauthorized` — invalid credentials (covers unknown email, wrong password, and deactivated account; identical message in all cases)
 - `429 Too Many Requests` — rate limit exceeded
 
 ---
@@ -341,10 +343,11 @@ Creates a new user account and sends a verification email.
 ```
 
 **Behaviour:**
-- If the whitelist feature is enabled and the email is not on the whitelist, return `403`.
-- If the email is already registered, return `409`.
-- On success, create the user (unverified), generate an email verification token, send the verification email, and return `201`.
-- Do not auto-login. The user must verify their email before they can log in.
+- Always returns the same generic `201` response regardless of whether the email is new or already registered. This prevents an unauthenticated attacker from using registration responses to enumerate existing accounts.
+- If the email is brand new: create the user (unverified), generate an email verification token, send the verification email.
+- If the email is already registered: do **not** create a duplicate user. Send a notification email to the existing address pointing to the sign-in and forgot-password flows.
+- If the whitelist feature is enabled and the email is not on the whitelist, return `403` with `"whitelistRestricted": true`. This is a deliberate UX trade-off (see §6.5) and the only non-201 response from this endpoint.
+- Do not auto-login. The user must verify their email before they can use the app.
 
 **Success response:** `201 Created`
 ```json
@@ -353,8 +356,8 @@ Creates a new user account and sends a verification email.
 
 **Error responses:**
 - `403 Forbidden` — email not on whitelist (`"whitelistRestricted": true` in detail)
-- `409 Conflict` — email already registered
 - `422 Unprocessable Entity` — validation error (invalid email, password too short)
+- `429 Too Many Requests` — rate limit exceeded
 
 ---
 
@@ -911,11 +914,14 @@ Field-level rules:
 
 ### 6.5 Email Enumeration Prevention
 
-The following endpoints always return the same response regardless of whether the provided email exists:
+The following endpoints always return the same response regardless of whether the provided email exists or is already registered:
 - `POST /api/auth/forgot-password`
 - `POST /api/auth/resend-verification`
+- `POST /api/auth/register` — duplicate emails receive the same generic 201 as new emails. The existing user is notified by email (sent in the background) rather than via a distinguishable HTTP response.
 
-The login endpoint returns a single generic error for both "user not found" and "wrong password" cases.
+The login endpoint returns the same generic `401 "Invalid email or password"` for unknown email, wrong password, **and** deactivated accounts. Unverified accounts log in successfully (200) and are gated post-login by the frontend, so the login response itself does not leak verification status.
+
+**Deliberate trade-off — `whitelistRestricted`.** When whitelist mode is enabled, `POST /api/auth/register` returns a `403` with `"whitelistRestricted": true` for emails that are not on the whitelist. This leaks whitelist membership for the specific email submitted and is kept intentionally because the frontend renders a different message for that case. Whitelist mode is typically used in private deployments where the membership oracle is acceptable; if it is not, switch the response to a generic 201 and rely on the absence of the verification email as the signal.
 
 ### 6.6 Security Event Logging
 
@@ -940,9 +946,11 @@ Every JSON event line includes these base fields:
 
 | Event | Fired when | Additional fields |
 |---|---|---|
-| `auth.login.success` | Credentials accepted, session issued | `user_id`, `ip` |
-| `auth.login.failure` | Login rejected | `email`, `ip`, `reason` (`invalid_credentials` \| `account_deactivated` \| `email_unverified`) |
+| `auth.login.success` | Credentials accepted for a verified, active user; session issued | `user_id`, `ip` |
+| `auth.login.unverified` | Credentials accepted for an active user whose email is not yet verified; session issued | `user_id`, `ip` |
+| `auth.login.failure` | Login rejected | `email`, `ip`, `reason` (`invalid_credentials` \| `account_deactivated`) |
 | `auth.register` | New account created via public registration | `user_id`, `email`, `ip` |
+| `auth.register.duplicate_attempt` | Registration attempted for an email that is already registered; existing user notified, no new account created | `email`, `ip` |
 | `auth.email_verified` | Email verification token consumed | `user_id` |
 | `auth.password_reset.requested` | `forgot-password` request matched a real, active user | `user_id`, `ip` |
 | `auth.password_reset.completed` | Password reset token consumed and password updated | `user_id` |

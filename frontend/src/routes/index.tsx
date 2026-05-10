@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import App from '@/App';
 import { PublicRoute } from '@/routes/PublicRoute';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
+import { UnverifiedRoute } from '@/routes/UnverifiedRoute';
 import { AdminRoute } from '@/routes/AdminRoute';
 import { AuthLayout, AppLayout } from '@/components/layout';
 import LoginPage from '@/pages/auth/LoginPage';
@@ -9,6 +10,7 @@ import RegisterPage from '@/pages/auth/RegisterPage';
 import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/auth/ResetPasswordPage';
 import VerifyEmailPage from '@/pages/auth/VerifyEmailPage';
+import VerifyPendingPage from '@/pages/auth/VerifyPendingPage';
 import DashboardPage from '@/pages/DashboardPage';
 import ProfilePage from '@/pages/profile/ProfilePage';
 import ChangePasswordPage from '@/pages/profile/ChangePasswordPage';
@@ -36,6 +38,17 @@ export const router = createBrowserRouter([
               { path: '/forgot-password', Component: ForgotPasswordPage },
               { path: '/reset-password', Component: ResetPasswordPage },
               { path: '/verify-email', Component: VerifyEmailPage },
+            ],
+          },
+        ],
+      },
+      {
+        Component: UnverifiedRoute,
+        children: [
+          {
+            Component: AuthLayout,
+            children: [
+              { path: '/verify-pending', Component: VerifyPendingPage },
             ],
           },
         ],

@@ -91,8 +91,10 @@ async def test_login_deactivated_account(test_client, async_session):
         "/api/auth/login",
         json={"email": "inactive@test.com", "password": TEST_PASSWORD, "rememberMe": False},
     )
+    # Deactivated accounts return the same generic 401 as wrong credentials
+    # so that an attacker cannot use login responses to confirm valid pairs.
     assert response.status_code == 401
-    assert response.json()["detail"] == "Account is deactivated"
+    assert response.json()["detail"] == "Invalid email or password"
 
 
 async def test_login_unverified_email(test_client, async_session):
@@ -112,9 +114,12 @@ async def test_login_unverified_email(test_client, async_session):
         "/api/auth/login",
         json={"email": "unverified@test.com", "password": TEST_PASSWORD, "rememberMe": False},
     )
-    assert response.status_code == 403
+    # Unverified users log in successfully; the frontend gate handles the rest.
+    assert response.status_code == 200
     data = response.json()
-    assert data["detail"]["emailNotVerified"] is True
+    assert data["email"] == "unverified@test.com"
+    assert data["emailVerified"] is False
+    assert "session_id" in response.cookies
 
 
 async def test_login_email_case_insensitive(test_client, test_user):
@@ -144,7 +149,11 @@ async def test_register_success(test_client, mock_email_provider):
     assert mock_email_provider.sent[0]["to"] == "newuser@test.com"
 
 
-async def test_register_duplicate_email(test_client, test_user):
+async def test_register_duplicate_email(test_client, test_user, async_session, mock_email_provider):
+    # Snapshot the user count so we can assert no new row is created.
+    before = await async_session.execute(select(User))
+    user_count_before = len(before.scalars().all())
+
     response = await test_client.post(
         "/api/auth/register",
         json={
@@ -154,8 +163,34 @@ async def test_register_duplicate_email(test_client, test_user):
             "lastName": "User",
         },
     )
-    assert response.status_code == 409
-    assert response.json()["detail"] == "Email already registered"
+
+    # Always returns the same generic 201 as a brand-new registration.
+    assert response.status_code == 201
+
+    # No duplicate user row was created.
+    after = await async_session.execute(select(User))
+    assert len(after.scalars().all()) == user_count_before
+
+    # The existing user received a duplicate-attempt notification.
+    assert len(mock_email_provider.sent) == 1
+    msg = mock_email_provider.sent[0]
+    assert msg["to"] == "user@test.com"
+    assert "already have an account" in msg["text_body"]
+
+
+async def test_register_duplicate_email_case_insensitive(test_client, test_user, mock_email_provider):
+    response = await test_client.post(
+        "/api/auth/register",
+        json={
+            "email": "USER@TEST.COM",
+            "password": "password123",
+            "firstName": "Dup",
+            "lastName": "User",
+        },
+    )
+    assert response.status_code == 201
+    assert len(mock_email_provider.sent) == 1
+    assert mock_email_provider.sent[0]["to"] == "user@test.com"
 
 
 async def test_register_whitelist_rejection(test_client, async_session, test_admin):

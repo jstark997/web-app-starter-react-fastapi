@@ -37,21 +37,11 @@ export default function RegisterPage() {
       });
       setSuccess(true);
     } catch (err) {
-      if (err instanceof ApiError) {
-        const emailError = err.fieldErrors.find((fe) => fe.field === 'email');
-        if (emailError) {
-          setError('email', { type: 'server', message: emailError.message });
-        } else if (err.details.whitelistRestricted === true) {
-          setError('root.serverError', {
-            type: 'server',
-            message: 'Registration is not available for this email address.',
-          });
-        } else {
-          setError('root.serverError', {
-            type: 'server',
-            message: err.message,
-          });
-        }
+      if (err instanceof ApiError && err.details.whitelistRestricted === true) {
+        setError('root.serverError', {
+          type: 'server',
+          message: 'Registration is not available for this email address.',
+        });
       } else {
         setError('root.serverError', {
           type: 'server',

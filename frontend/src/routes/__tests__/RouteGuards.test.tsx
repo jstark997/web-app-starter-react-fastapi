@@ -5,6 +5,7 @@ import type { RouteObject } from 'react-router-dom';
 import type { AuthUser } from '@/types';
 import { PublicRoute } from '@/routes/PublicRoute';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
+import { UnverifiedRoute } from '@/routes/UnverifiedRoute';
 import { AdminRoute } from '@/routes/AdminRoute';
 
 const defaultUser: AuthUser = {
@@ -101,6 +102,7 @@ describe('ProtectedRoute', () => {
       ],
     },
     { path: '/login', element: <LoginPageWithState /> },
+    { path: '/verify-pending', element: <PlaceholderPage label="Verify pending page" /> },
   ];
 
   it('renders child route for authenticated users', () => {
@@ -119,6 +121,43 @@ describe('ProtectedRoute', () => {
     setAuth(null);
     renderWithRoutes(routes, '/profile');
     expect(screen.getByText(/from: \/profile/)).toBeInTheDocument();
+  });
+
+  it('redirects authenticated but unverified users to /verify-pending', () => {
+    setAuth({ ...defaultUser, emailVerified: false });
+    renderWithRoutes(routes, '/dashboard');
+    expect(screen.getByText('Verify pending page')).toBeInTheDocument();
+  });
+});
+
+describe('UnverifiedRoute', () => {
+  const routes: RouteObject[] = [
+    {
+      Component: UnverifiedRoute,
+      children: [
+        { path: '/verify-pending', element: <PlaceholderPage label="Verify pending page" /> },
+      ],
+    },
+    { path: '/login', element: <PlaceholderPage label="Login page" /> },
+    { path: '/dashboard', element: <PlaceholderPage label="Dashboard page" /> },
+  ];
+
+  it('renders child route for authenticated but unverified users', () => {
+    setAuth({ ...defaultUser, emailVerified: false });
+    renderWithRoutes(routes, '/verify-pending');
+    expect(screen.getByText('Verify pending page')).toBeInTheDocument();
+  });
+
+  it('redirects unauthenticated users to /login', () => {
+    setAuth(null);
+    renderWithRoutes(routes, '/verify-pending');
+    expect(screen.getByText('Login page')).toBeInTheDocument();
+  });
+
+  it('redirects verified users to /dashboard', () => {
+    setAuth(defaultUser);
+    renderWithRoutes(routes, '/verify-pending');
+    expect(screen.getByText('Dashboard page')).toBeInTheDocument();
   });
 });
 

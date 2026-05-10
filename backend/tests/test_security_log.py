@@ -93,6 +93,31 @@ def test_log_login_failure_emits_reason(caplog):
     assert records[0].reason == "invalid_credentials"
 
 
+def test_log_login_unverified_emits_event(caplog):
+    user_id = uuid.uuid4()
+    with caplog.at_level(logging.INFO, logger="app.security"):
+        security_log.log_login_unverified(user_id, "1.2.3.4")
+
+    records = [r for r in caplog.records if r.name == "app.security"]
+    assert len(records) == 1
+    assert records[0].event == "auth.login.unverified"
+    assert records[0].user_id == str(user_id)
+    assert records[0].ip == "1.2.3.4"
+
+
+def test_log_register_duplicate_attempt_emits_event(caplog):
+    with caplog.at_level(logging.INFO, logger="app.security"):
+        security_log.log_register_duplicate_attempt(
+            "user@example.com", "1.2.3.4"
+        )
+
+    records = [r for r in caplog.records if r.name == "app.security"]
+    assert len(records) == 1
+    assert records[0].event == "auth.register.duplicate_attempt"
+    assert records[0].email == "user@example.com"
+    assert records[0].ip == "1.2.3.4"
+
+
 def test_log_admin_user_updated_sorts_fields(caplog):
     actor_id = uuid.uuid4()
     target_id = uuid.uuid4()
@@ -169,6 +194,73 @@ async def test_register_emits_event(test_client, mock_email_provider, caplog):
     events = [r for r in _security_events(caplog) if r.event == "auth.register"]
     assert len(events) == 1
     assert events[0].email == "new@test.com"
+
+
+async def test_login_unverified_emits_event(test_client, async_session, caplog):
+    from app.core.security import hash_password
+    from app.models.user import User, UserRole
+
+    from tests.conftest import TEST_PASSWORD
+
+    user = User(
+        email="unverified-log@test.com",
+        password_hash=hash_password(TEST_PASSWORD),
+        first_name="Unverified",
+        last_name="User",
+        role=UserRole.USER,
+        is_active=True,
+        email_verified=False,
+    )
+    async_session.add(user)
+    await async_session.commit()
+    await async_session.refresh(user)
+
+    with caplog.at_level(logging.INFO, logger="app.security"):
+        response = await test_client.post(
+            "/api/auth/login",
+            json={
+                "email": "unverified-log@test.com",
+                "password": TEST_PASSWORD,
+                "rememberMe": False,
+            },
+        )
+
+    assert response.status_code == 200
+    events = [
+        r for r in _security_events(caplog) if r.event == "auth.login.unverified"
+    ]
+    assert len(events) == 1
+    assert events[0].user_id == str(user.id)
+    # No login.success event fires for unverified users (only login.unverified).
+    success = [r for r in _security_events(caplog) if r.event == "auth.login.success"]
+    assert len(success) == 0
+
+
+async def test_register_duplicate_emits_event(test_client, test_user, mock_email_provider, caplog):
+    with caplog.at_level(logging.INFO, logger="app.security"):
+        response = await test_client.post(
+            "/api/auth/register",
+            json={
+                "email": "user@test.com",
+                "password": "password123",
+                "firstName": "Dup",
+                "lastName": "User",
+            },
+        )
+
+    assert response.status_code == 201
+    events = [
+        r
+        for r in _security_events(caplog)
+        if r.event == "auth.register.duplicate_attempt"
+    ]
+    assert len(events) == 1
+    assert events[0].email == "user@test.com"
+    # No auth.register event fires when the email was already registered.
+    new_registers = [
+        r for r in _security_events(caplog) if r.event == "auth.register"
+    ]
+    assert len(new_registers) == 0
 
 
 async def test_logout_emits_session_invalidated(auth_client, caplog):

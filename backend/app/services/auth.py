@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.email import (
     EmailProvider,
+    send_duplicate_registration_attempt_email,
     send_password_reset_email,
     send_verification_email,
 )
@@ -17,9 +18,11 @@ from app.core.security_log import (
     log_email_verified,
     log_login_failure,
     log_login_success,
+    log_login_unverified,
     log_password_reset_completed,
     log_password_reset_requested,
     log_register,
+    log_register_duplicate_attempt,
 )
 from app.models.token import Token, TokenType
 from app.models.user import User, UserRole
@@ -42,22 +45,17 @@ async def login(
         log_login_failure(email, client_ip, "invalid_credentials")
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
+    # Deactivated accounts return the same generic 401 as wrong credentials so
+    # that a credential-stuffing attacker cannot confirm `email:password` pairs.
     if not user.is_active:
         log_login_failure(email, client_ip, "account_deactivated")
-        raise HTTPException(status_code=401, detail="Account is deactivated")
-
-    if not user.email_verified:
-        log_login_failure(email, client_ip, "email_unverified")
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "detail": "Email not verified",
-                "emailNotVerified": True,
-            },
-        )
+        raise HTTPException(status_code=401, detail="Invalid email or password")
 
     session = await create_session(db, user.id, remember_me)
-    log_login_success(user.id, client_ip)
+    if user.email_verified:
+        log_login_success(user.id, client_ip)
+    else:
+        log_login_unverified(user.id, client_ip)
     return user, session
 
 
@@ -74,10 +72,19 @@ async def register(
 
     await whitelist_service.assert_email_allowed(db, email)
 
-    # Check duplicate email
+    # If the email is already registered, notify the existing user instead of
+    # responding with a distinguishable error. The route handler always returns
+    # the same generic 201, so the response itself does not leak existence.
     existing = await db.execute(select(User).where(User.email == email))
-    if existing.scalar_one_or_none() is not None:
-        raise HTTPException(status_code=409, detail="Email already registered")
+    existing_user = existing.scalar_one_or_none()
+    if existing_user is not None:
+        log_register_duplicate_attempt(email, client_ip)
+        login_url = f"{settings.frontend_url}/login"
+        forgot_password_url = f"{settings.frontend_url}/forgot-password"
+        await send_duplicate_registration_attempt_email(
+            email_provider, existing_user.email, login_url, forgot_password_url
+        )
+        return
 
     # Create user
     user = User(
