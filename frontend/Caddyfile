@@ -29,6 +29,16 @@
 		format json
 	}
 
+	# Security headers — see .ignore/SECURITY-REVIEW.md A05-3.
+	# Applies to all responses (health, /api/* proxy, SPA).
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"
+		-Server
+	}
+
 	# Health check endpoint for Railway's healthchecks.
 	handle /health {
 		respond "OK" 200

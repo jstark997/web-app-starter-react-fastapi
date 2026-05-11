@@ -142,7 +142,7 @@ Sessions are stored server-side in the database. A session ID is issued to the c
 | `first_name` | String | |
 | `last_name` | String | |
 | `display_name` | String | Defaults to `first_name + last_name` |
-| `avatar_url` | String | Nullable |
+| `avatar_url` | String | Nullable. When set, must be a `data:image/(png\|jpeg\|jpg\|webp\|gif\|svg+xml);base64,` URI. Remote URLs are rejected by `PATCH /api/profile`. |
 | `role` | Enum | `admin` or `user` |
 | `is_active` | Boolean | Default `true` |
 | `email_verified` | Boolean | Default `false` |
@@ -495,9 +495,11 @@ Updates the current user's profile fields.
   "firstName": "Jane",
   "lastName": "Smith",
   "displayName": "Janie",
-  "avatarUrl": "https://example.com/avatar.png"
+  "avatarUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg..."
 }
 ```
+
+`avatarUrl` must be `null`, an empty string, or a `data:image/(png|jpeg|jpg|webp|gif|svg+xml);base64,` URI. Any other value (including `http(s)://...`) returns `422 Unprocessable Entity`.
 
 **Success response:** `200 OK` — updated profile (same shape as `GET /api/profile`)
 
@@ -1216,7 +1218,7 @@ The following concerns are explicitly out of scope for `fastapi-starter` and are
 - OAuth / social login (Google, GitHub, etc.)
 - Multi-factor authentication (MFA / TOTP)
 - Audit logging beyond the structured security event log described in section 6.6 (e.g. tamper-evident append-only audit trails, durable storage, retention policies)
-- File uploads (avatar images are accepted as URLs only)
+- Multipart file uploads and out-of-row blob storage (avatars are accepted as inline `data:image/...;base64,` URIs in the JSON body and persisted on the user row; remote URLs are explicitly rejected by `PATCH /api/profile`)
 - WebSockets or real-time features
 - Background task queues (e.g. Celery, ARQ)
 - Application-specific business logic or endpoints

@@ -237,17 +237,7 @@ export default function ProfilePage() {
           />
 
           <div className="space-y-1">
-            <Input
-              label="Avatar URL"
-              disabled={isSubmitting}
-              error={errors.avatarUrl?.message}
-              placeholder="https://example.com/avatar.jpg"
-              {...register('avatarUrl', {
-                onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-                  setAvatarPreview(e.target.value);
-                },
-              })}
-            />
+            <span className="block text-sm font-medium text-gray-700">Avatar</span>
             <div className="flex items-center gap-2">
               <Button
                 type="button"
@@ -276,6 +266,14 @@ export default function ProfilePage() {
                 </Button>
               )}
             </div>
+            {errors.avatarUrl?.message && (
+              <p className="text-sm text-red-600" role="alert">
+                {errors.avatarUrl.message}
+              </p>
+            )}
+            <p className="text-xs text-gray-500">
+              JPEG, PNG, WebP, GIF, or SVG. Max 2 MB.
+            </p>
             <input
               ref={fileInputRef}
               type="file"

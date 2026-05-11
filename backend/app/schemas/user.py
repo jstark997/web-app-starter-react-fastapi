@@ -1,8 +1,13 @@
+import re
 from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from pydantic.alias_generators import to_camel
+
+_AVATAR_DATA_URI_RE = re.compile(
+    r"^data:image/(png|jpeg|jpg|webp|gif|svg\+xml);base64,"
+)
 
 
 class ProfileResponse(BaseModel):
@@ -90,6 +95,17 @@ class UpdateProfileRequest(BaseModel):
     last_name: str | None = Field(default=None, min_length=1)
     display_name: str | None = None
     avatar_url: str | None = None
+
+    @field_validator("avatar_url")
+    @classmethod
+    def validate_avatar_url(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return v
+        if not _AVATAR_DATA_URI_RE.match(v):
+            raise ValueError(
+                "avatar_url must be a data:image/...;base64, URI"
+            )
+        return v
 
 
 class ChangeEmailRequest(BaseModel):

@@ -220,7 +220,7 @@ src/utils/validation.ts                      # Extended with profile and passwor
 - Email change is initiated via a "Change Email" button that opens a `Dialog` containing the new email and current password fields. On submission a success message is shown inside the dialog.
 - After a successful profile save, call `/api/auth/me` and update `AuthContext` so the navbar reflects the new name immediately.
 - `ChangePasswordPage` uses three `PasswordInput` fields: current password, new password, confirm new password. On success show a success toast and redirect to `/profile`.
-- Avatar field supports either a URL input or a file upload (base64 preview).
+- Avatar field supports file upload only. The selected file is read via `FileReader.readAsDataURL` and stored as a `data:` URI on the user record; max 2 MB. Remote-URL avatars are not accepted (the backend rejects anything other than `null`/empty or a `data:image/...;base64,` value).
 
 **Completion checklist:**
 

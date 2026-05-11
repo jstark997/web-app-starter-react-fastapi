@@ -163,10 +163,11 @@ describe('profileSchema', () => {
     expect(profileSchema.safeParse(validData).success).toBe(true);
   });
 
-  it('accepts a valid avatar URL', () => {
+  it('accepts a data: URI avatar', () => {
     const result = profileSchema.safeParse({
       ...validData,
-      avatarUrl: 'https://example.com/avatar.jpg',
+      avatarUrl:
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     });
     expect(result.success).toBe(true);
   });
@@ -176,7 +177,15 @@ describe('profileSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('rejects an invalid avatar URL', () => {
+  it('rejects a remote http(s) avatar URL', () => {
+    const result = profileSchema.safeParse({
+      ...validData,
+      avatarUrl: 'https://example.com/avatar.jpg',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a non-data string', () => {
     const result = profileSchema.safeParse({
       ...validData,
       avatarUrl: 'not-a-url',

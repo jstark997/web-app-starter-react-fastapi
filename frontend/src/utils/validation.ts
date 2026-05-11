@@ -51,7 +51,12 @@ export const profileSchema = z.object({
   firstName: z.string().min(1, { error: 'First name is required.' }),
   lastName: z.string().min(1, { error: 'Last name is required.' }),
   displayName: z.string().optional().default(''),
-  avatarUrl: z.string().url({ error: 'Please enter a valid URL.' }).or(z.literal('')),
+  avatarUrl: z
+    .string()
+    .regex(/^data:image\/(png|jpeg|jpg|webp|gif|svg\+xml);base64,/, {
+      error: 'Avatar must be an uploaded image.',
+    })
+    .or(z.literal('')),
 });
 
 export type ProfileFormInput = z.input<typeof profileSchema>;

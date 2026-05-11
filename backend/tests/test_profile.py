@@ -67,14 +67,39 @@ async def test_patch_profile_partial_update_leaves_other_fields_unchanged(
 
 
 async def test_patch_profile_can_set_display_name_and_avatar(auth_client, async_session, test_user):
+    data_uri = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg=="
     response = await auth_client.patch(
         "/api/profile",
-        json={"displayName": "Janie", "avatarUrl": "https://example.com/a.png"},
+        json={"displayName": "Janie", "avatarUrl": data_uri},
     )
     assert response.status_code == 200
     data = response.json()
     assert data["displayName"] == "Janie"
-    assert data["avatarUrl"] == "https://example.com/a.png"
+    assert data["avatarUrl"] == data_uri
+
+
+async def test_patch_profile_rejects_remote_avatar_url(auth_client):
+    response = await auth_client.patch(
+        "/api/profile",
+        json={"avatarUrl": "https://example.com/a.png"},
+    )
+    assert response.status_code == 422
+
+
+async def test_patch_profile_rejects_non_image_data_uri(auth_client):
+    response = await auth_client.patch(
+        "/api/profile",
+        json={"avatarUrl": "data:text/html;base64,PHNjcmlwdD4="},
+    )
+    assert response.status_code == 422
+
+
+async def test_patch_profile_accepts_null_avatar(auth_client):
+    response = await auth_client.patch(
+        "/api/profile",
+        json={"avatarUrl": None},
+    )
+    assert response.status_code == 200
 
 
 async def test_patch_profile_unauthenticated(test_client):

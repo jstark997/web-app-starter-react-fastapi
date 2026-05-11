@@ -204,7 +204,7 @@ Three route guard components control access:
 
 - **Page:** `/profile`
 - **Displays:** Avatar, first name, last name, display name, email address, account role, account status, member since date.
-- **Editable fields:** First name, Last name, Display name (optional), Avatar (upload or URL).
+- **Editable fields:** First name, Last name, Display name (optional), Avatar (upload only — JPEG, PNG, WebP, GIF, or SVG; max 2 MB; stored inline as a `data:` URI). Remote-URL avatars are not supported.
 - Display name is optional. When not set, the UI falls back to `firstName + ' ' + lastName`.
 - Email address changes are handled separately (see 5.2.2).
 - On save, display a success toast notification.

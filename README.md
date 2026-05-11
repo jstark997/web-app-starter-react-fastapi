@@ -167,6 +167,14 @@ Deploy the **backend first** (so its private hostname `backend.railway.internal`
 
 - `https://<frontend>.up.railway.app/health` → `OK` (Caddy's health check).
 - `https://<frontend>.up.railway.app/api/health` → `{"status":"ok"}` (proxied to FastAPI).
+- Security headers are applied at the Caddy layer (see `frontend/Caddyfile`). To confirm:
+
+  ```bash
+  curl -sI https://<frontend>.up.railway.app/ \
+    | grep -iE 'content-security-policy|strict-transport|x-content-type|referrer-policy|^server'
+  ```
+
+  Expect `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, a `Content-Security-Policy` line, and **no** `Server: Caddy` header. The same headers must appear on `/api/health` and on any static path.
 - Open the public URL and try registering a user. If login works, sessions and the proxy chain are all wired correctly.
 
 ---
