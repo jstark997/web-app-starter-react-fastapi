@@ -8,12 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.email import (
     EmailProvider,
+    send_account_locked_email,
     send_duplicate_registration_attempt_email,
     send_password_reset_email,
     send_verification_email,
 )
 from app.core.security import generate_token, hash_password, verify_password
 from app.core.security_log import (
+    log_account_locked,
     log_email_change_completed,
     log_email_verified,
     log_login_failure,
@@ -30,8 +32,19 @@ from app.services import whitelist as whitelist_service
 from app.services.session import create_session, invalidate_all_sessions, invalidate_session
 
 
+LOGIN_LOCKOUT_THRESHOLD = 5
+LOGIN_LOCKOUT_BASE_SECONDS = 60
+LOGIN_LOCKOUT_MAX_SECONDS = 900  # 15 minutes
+
+
+def _compute_lock_seconds(failed_count: int) -> int:
+    exponent = failed_count - LOGIN_LOCKOUT_THRESHOLD
+    return min(LOGIN_LOCKOUT_BASE_SECONDS * (2 ** exponent), LOGIN_LOCKOUT_MAX_SECONDS)
+
+
 async def login(
     db: AsyncSession,
+    email_provider: EmailProvider,
     email: str,
     password: str,
     remember_me: bool,
@@ -40,8 +53,34 @@ async def login(
     email = email.lower()
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+
+    # Locked: refuse without checking the password and without incrementing.
+    # The same generic 401 is returned so an attacker cannot distinguish
+    # locked-vs-wrong-credentials, and bcrypt is not run on doomed attempts.
+    if user is not None and user.locked_until is not None and user.locked_until > now:
+        log_login_failure(email, client_ip, "account_locked")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
 
     if user is None or not verify_password(password, user.password_hash):
+        if user is not None:
+            previous_count = user.failed_login_count
+            user.failed_login_count = previous_count + 1
+            if user.failed_login_count >= LOGIN_LOCKOUT_THRESHOLD:
+                user.locked_until = now + timedelta(
+                    seconds=_compute_lock_seconds(user.failed_login_count)
+                )
+                log_account_locked(user.id, client_ip, user.locked_until)
+            await db.commit()
+            # Email the user only on the first threshold crossing of a
+            # campaign. Subsequent re-locks (count 6, 7, ...) reuse the
+            # existing alert so an attacker cannot bomb the victim's inbox
+            # by waiting out each lock window.
+            if previous_count == LOGIN_LOCKOUT_THRESHOLD - 1:
+                forgot_password_url = f"{settings.frontend_url}/forgot-password"
+                await send_account_locked_email(
+                    email_provider, user.email, forgot_password_url
+                )
         log_login_failure(email, client_ip, "invalid_credentials")
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
@@ -50,6 +89,12 @@ async def login(
     if not user.is_active:
         log_login_failure(email, client_ip, "account_deactivated")
         raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    # Successful credential check — clear lockout state.
+    if user.failed_login_count != 0 or user.locked_until is not None:
+        user.failed_login_count = 0
+        user.locked_until = None
+        await db.commit()
 
     session = await create_session(db, user.id, remember_me)
     if user.email_verified:
@@ -188,6 +233,8 @@ async def reset_password(db: AsyncSession, token_str: str, new_password: str):
 
     token.used_at = datetime.now(timezone.utc)
     token.user.password_hash = hash_password(new_password)
+    token.user.failed_login_count = 0
+    token.user.locked_until = None
     await db.commit()
 
     await invalidate_all_sessions(db, token.user_id, reason="password_reset")

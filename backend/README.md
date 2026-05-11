@@ -13,6 +13,7 @@ It is the backend half of a two-project starter system. The companion frontend i
 - Optional registration whitelist (toggleable at runtime)
 - Provider-agnostic email layer with SMTP, Resend, and mock providers built in
 - Rate limiting on sensitive auth endpoints
+- Per-account brute-force lockout with exponential backoff and user email notification — see [`API-SPEC.md` §6.7](./API-SPEC.md#67-per-account-brute-force-lockout)
 - Structured JSON security event logging (login attempts, admin actions, session invalidations) — see [`API-SPEC.md` §6.6](./API-SPEC.md#66-security-event-logging)
 - Async SQLAlchemy 2.x with Alembic migrations
 - Pytest test suite with ≥ 80% coverage gate

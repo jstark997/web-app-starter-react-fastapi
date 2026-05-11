@@ -130,6 +130,172 @@ async def test_login_email_case_insensitive(test_client, test_user):
     assert response.status_code == 200
 
 
+# --- Login lockout (per-account brute-force defence) ---
+
+
+async def _post_login(client, email: str, password: str):
+    return await client.post(
+        "/api/auth/login",
+        json={"email": email, "password": password, "rememberMe": False},
+    )
+
+
+async def test_login_lockout_after_threshold_failures(test_client, test_user, async_session):
+    for _ in range(5):
+        response = await _post_login(test_client, "user@test.com", "wrongpassword")
+        assert response.status_code == 401
+
+    await async_session.refresh(test_user)
+    assert test_user.failed_login_count == 5
+    assert test_user.locked_until is not None
+    locked_until = test_user.locked_until.replace(tzinfo=timezone.utc)
+    assert locked_until > datetime.now(timezone.utc)
+
+
+async def test_login_locked_account_rejects_correct_password(test_client, test_user, async_session):
+    test_user.failed_login_count = 5
+    test_user.locked_until = datetime.now(timezone.utc) + timedelta(seconds=60)
+    await async_session.commit()
+
+    response = await _post_login(test_client, "user@test.com", TEST_PASSWORD)
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid email or password"
+
+    await async_session.refresh(test_user)
+    assert test_user.failed_login_count == 5  # not incremented while locked
+
+
+async def test_login_lockout_window_expires(test_client, test_user, async_session):
+    test_user.failed_login_count = 5
+    test_user.locked_until = datetime.now(timezone.utc) - timedelta(seconds=1)
+    await async_session.commit()
+
+    response = await _post_login(test_client, "user@test.com", TEST_PASSWORD)
+    assert response.status_code == 200
+
+    await async_session.refresh(test_user)
+    assert test_user.failed_login_count == 0
+    assert test_user.locked_until is None
+
+
+async def test_login_success_resets_failed_count(test_client, test_user, async_session):
+    for _ in range(3):
+        response = await _post_login(test_client, "user@test.com", "wrongpassword")
+        assert response.status_code == 401
+
+    await async_session.refresh(test_user)
+    assert test_user.failed_login_count == 3
+    assert test_user.locked_until is None
+
+    response = await _post_login(test_client, "user@test.com", TEST_PASSWORD)
+    assert response.status_code == 200
+
+    await async_session.refresh(test_user)
+    assert test_user.failed_login_count == 0
+    assert test_user.locked_until is None
+
+
+async def test_login_exponential_backoff(test_client, test_user, async_session):
+    for _ in range(5):
+        await _post_login(test_client, "user@test.com", "wrongpassword")
+
+    await async_session.refresh(test_user)
+    first_lock = test_user.locked_until.replace(tzinfo=timezone.utc)
+    first_lock_seconds = (first_lock - datetime.now(timezone.utc)).total_seconds()
+
+    # Force-expire the first lock so the 6th attempt is allowed through to
+    # the credential check (and thus triggers another increment + re-lock).
+    test_user.locked_until = datetime.now(timezone.utc) - timedelta(seconds=1)
+    await async_session.commit()
+
+    await _post_login(test_client, "user@test.com", "wrongpassword")
+
+    await async_session.refresh(test_user)
+    assert test_user.failed_login_count == 6
+    second_lock = test_user.locked_until.replace(tzinfo=timezone.utc)
+    second_lock_seconds = (second_lock - datetime.now(timezone.utc)).total_seconds()
+    # Second window should be roughly 2x the first (60s -> 120s); allow some
+    # slack for the test runtime.
+    assert second_lock_seconds > first_lock_seconds * 1.5
+
+
+async def test_password_reset_clears_lockout(test_client, test_user, async_session, mock_email_provider):
+    from app.models.token import Token, TokenType
+
+    test_user.failed_login_count = 5
+    test_user.locked_until = datetime.now(timezone.utc) + timedelta(seconds=300)
+    token_value = "reset-token-for-locked-user"
+    token = Token(
+        user_id=test_user.id,
+        token=token_value,
+        token_type=TokenType.PASSWORD_RESET,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    async_session.add(token)
+    await async_session.commit()
+
+    response = await test_client.post(
+        "/api/auth/reset-password",
+        json={"token": token_value, "password": "newpassword123"},
+    )
+    assert response.status_code == 200
+
+    await async_session.refresh(test_user)
+    assert test_user.failed_login_count == 0
+    assert test_user.locked_until is None
+
+    response = await _post_login(test_client, "user@test.com", "newpassword123")
+    assert response.status_code == 200
+
+
+async def test_login_lockout_no_row_for_unknown_email(test_client, test_user, async_session):
+    for _ in range(5):
+        response = await _post_login(test_client, "nobody@test.com", "wrongpassword")
+        assert response.status_code == 401
+
+    # The known user is untouched — no per-account state was created for the unknown email.
+    await async_session.refresh(test_user)
+    assert test_user.failed_login_count == 0
+    assert test_user.locked_until is None
+
+
+async def test_lockout_email_sent_once_per_campaign(test_client, test_user, async_session, mock_email_provider):
+    for _ in range(5):
+        await _post_login(test_client, "user@test.com", "wrongpassword")
+
+    lock_emails = [m for m in mock_email_provider.sent if m["to"] == "user@test.com"]
+    assert len(lock_emails) == 1
+    assert "temporarily locked" in lock_emails[0]["text_body"]
+
+    # Force-expire the first lock and submit a 6th wrong attempt — this
+    # re-locks the account but must NOT send another email.
+    await async_session.refresh(test_user)
+    test_user.locked_until = datetime.now(timezone.utc) - timedelta(seconds=1)
+    await async_session.commit()
+
+    await _post_login(test_client, "user@test.com", "wrongpassword")
+    lock_emails = [m for m in mock_email_provider.sent if m["to"] == "user@test.com"]
+    assert len(lock_emails) == 1  # still only one
+
+    # A successful login resets the counter; a fresh campaign then earns a fresh email.
+    await async_session.refresh(test_user)
+    test_user.locked_until = datetime.now(timezone.utc) - timedelta(seconds=1)
+    await async_session.commit()
+    response = await _post_login(test_client, "user@test.com", TEST_PASSWORD)
+    assert response.status_code == 200
+
+    for _ in range(5):
+        await _post_login(test_client, "user@test.com", "wrongpassword")
+    lock_emails = [m for m in mock_email_provider.sent if m["to"] == "user@test.com"]
+    assert len(lock_emails) == 2
+
+
+async def test_lockout_email_not_sent_for_unknown_email(test_client, mock_email_provider):
+    for _ in range(5):
+        await _post_login(test_client, "nobody@test.com", "wrongpassword")
+    assert mock_email_provider.sent == []
+
+
 # --- Register ---
 
 

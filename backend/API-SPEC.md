@@ -146,6 +146,8 @@ Sessions are stored server-side in the database. A session ID is issued to the c
 | `role` | Enum | `admin` or `user` |
 | `is_active` | Boolean | Default `true` |
 | `email_verified` | Boolean | Default `false` |
+| `failed_login_count` | Integer | Default `0`. Consecutive failed login attempts since the last successful login or password reset. See §6.7. |
+| `locked_until` | TIMESTAMPTZ | Nullable, UTC. When set and in the future, login is refused for this account. See §6.7. |
 | `created_at` | TIMESTAMPTZ | UTC |
 | `updated_at` | TIMESTAMPTZ | UTC, auto-updated |
 
@@ -292,9 +294,10 @@ Sets `session_id` cookie on the response.
 **Behaviour:**
 - Unknown email, wrong password, **and** deactivated accounts all return the same generic 401. This prevents an unauthenticated attacker from using login responses to confirm valid `email:password` pairs or to enumerate deactivated accounts.
 - An unverified account **can** log in (session is issued and 200 returned). The frontend route guard redirects unverified users to `/verify-pending` until they verify their address, so `emailVerified` is surfaced post-login rather than via a differentiated error response.
+- Per-account brute-force lockout is layered on top of the per-IP rate limit. After 5 consecutive failed attempts the account is locked for an exponentially-growing window. While locked, attempts return the same generic 401 without running bcrypt and without further incrementing the counter. A successful login (or password reset) clears the counter. See §6.7.
 
 **Error responses:**
-- `401 Unauthorized` — invalid credentials (covers unknown email, wrong password, and deactivated account; identical message in all cases)
+- `401 Unauthorized` — invalid credentials (covers unknown email, wrong password, deactivated account, **and** account locked; identical message in all cases)
 - `429 Too Many Requests` — rate limit exceeded
 
 ---
@@ -950,7 +953,8 @@ Every JSON event line includes these base fields:
 |---|---|---|
 | `auth.login.success` | Credentials accepted for a verified, active user; session issued | `user_id`, `ip` |
 | `auth.login.unverified` | Credentials accepted for an active user whose email is not yet verified; session issued | `user_id`, `ip` |
-| `auth.login.failure` | Login rejected | `email`, `ip`, `reason` (`invalid_credentials` \| `account_deactivated`) |
+| `auth.login.failure` | Login rejected | `email`, `ip`, `reason` (`invalid_credentials` \| `account_deactivated` \| `account_locked`) |
+| `auth.login.account_locked` | Per-account lockout window set (failure count reached threshold) | `user_id`, `ip`, `locked_until` (ISO-8601) |
 | `auth.register` | New account created via public registration | `user_id`, `email`, `ip` |
 | `auth.register.duplicate_attempt` | Registration attempted for an email that is already registered; existing user notified, no new account created | `email`, `ip` |
 | `auth.email_verified` | Email verification token consumed | `user_id` |
@@ -982,6 +986,24 @@ Every JSON event line includes these base fields:
 
 When adding a security-relevant action (e.g. MFA enrolment, API token issuance), add a corresponding `log_*()` helper to `app/core/security_log.py` with a stable `<domain>.<action>` event name and call it from the service layer after the action commits — never from a route handler. Test with `caplog` using the patterns in `tests/test_security_log.py`.
 
+### 6.7 Per-Account Brute-Force Lockout
+
+The per-IP rate limit on `POST /api/auth/login` (10/min) is supplemented by a per-account lockout that defends against distributed credential-stuffing attacks (botnets / residential proxy pools) where each new source IP receives a fresh per-IP quota. State is held on the `users` row in two columns: `failed_login_count` and `locked_until`.
+
+**Policy:**
+- A failed login attempt against an existing account increments `failed_login_count`.
+- When `failed_login_count >= 5`, `locked_until` is set to `now + min(60 * 2^(failed_login_count - 5), 900)` seconds — 1 min on the 5th failure, 2 min on the 6th, 4, 8, … capped at 15 minutes.
+- While `locked_until` is in the future, login attempts return the same generic `401 "Invalid email or password"` **without** running bcrypt and **without** incrementing the counter. The lock itself is the deterrent; cheap probes during the window cannot extend it further.
+- A successful credential check resets both columns to `0` / `NULL`. A successful password reset (`POST /api/auth/reset-password`) does the same — proof of email ownership is sufficient to clear the lock.
+- Non-existent emails do not create a row. They are covered by the per-IP rate limit only.
+- Constants are defined in `app/services/auth.py` (`LOGIN_LOCKOUT_THRESHOLD`, `LOGIN_LOCKOUT_BASE_SECONDS`, `LOGIN_LOCKOUT_MAX_SECONDS`).
+
+**User notification:** to balance the silent 401 (required by §6.5), the account owner is emailed when their account is first locked in a campaign — see §7.1. The email is throttled to one per campaign (only when `failed_login_count` transitions from 4 to 5) so an attacker cannot bomb the victim's inbox by waiting out successive lock windows. A new email becomes possible only after a successful login resets the counter.
+
+**Enumeration safety:** the response is identical to the existing invalid-credentials path, so the lockout state of an account is not observable from outside.
+
+**Operational note — scaling to multiple instances:** because the counter is a row in the shared `users` table, the lockout is enforced globally across application instances out of the box. It does not depend on `slowapi`'s in-memory storage.
+
 ---
 
 ## 7. Email Notifications
@@ -997,6 +1019,7 @@ The backend sends transactional emails for the following events:
 | Forgot password | User | Password reset link |
 | Admin: force password reset | User | Password reset link |
 | Admin: create user with invitation | New user | Invitation with password set link |
+| Account locked (brute-force lockout) | User | Notice that the account has been temporarily locked after multiple failed login attempts, plus a forgot-password link. Sent at most once per lockout campaign — see §6.7. |
 
 All links point to the frontend URL (configured via `FRONTEND_URL` environment variable) with the token as a query parameter. Token links expire after 24 hours. Emails include this expiry information.
 
@@ -1130,6 +1153,7 @@ The test suite covers unit and integration levels, using a dedicated in-memory S
 
 **Authentication flows**
 - Login: valid credentials, wrong password, non-existent user, deactivated account, unverified email, remember-me session duration.
+- Login lockout: threshold reached, locked account rejects correct password, window expiry restores access, success resets the counter, exponential backoff between successive locks, password reset clears lockout, no row created for unknown emails, lockout email throttled to one per campaign.
 - Register: success, whitelist rejection, duplicate email, invalid password.
 - Email verification: valid token, expired token, already-used token.
 - Forgot password / reset password: success, invalid token, expired token, all sessions invalidated after reset.

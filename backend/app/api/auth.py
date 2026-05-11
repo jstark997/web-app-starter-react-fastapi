@@ -34,9 +34,15 @@ async def login(
     body: LoginRequest,
     response: Response,
     db: AsyncSession = Depends(get_db),
+    email_provider: EmailProvider = Depends(get_email_provider),
 ):
     user, session = await auth_service.login(
-        db, body.email, body.password, body.remember_me, get_client_ip(request)
+        db,
+        email_provider,
+        body.email,
+        body.password,
+        body.remember_me,
+        get_client_ip(request),
     )
 
     max_age = int((session.expires_at - session.created_at).total_seconds())

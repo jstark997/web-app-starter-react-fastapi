@@ -108,6 +108,35 @@ async def send_duplicate_registration_attempt_email(
     await provider.send(to_email, subject, html_body, text_body)
 
 
+async def send_account_locked_email(
+    provider: EmailProvider,
+    to_email: str,
+    forgot_password_url: str,
+) -> None:
+    subject = "Your account has been temporarily locked"
+    text_body = (
+        "We detected multiple failed login attempts on your account and have "
+        "temporarily locked it as a precaution.\n\n"
+        "If this was you, please wait a few minutes before trying again.\n\n"
+        "If this was not you, someone may be trying to access your account. "
+        "Please reset your password here:\n"
+        f"{forgot_password_url}\n\n"
+        "If you reuse this password on other sites, we strongly recommend "
+        "changing it there as well."
+    )
+    html_body = (
+        "<p>We detected multiple failed login attempts on your account and have "
+        "temporarily locked it as a precaution.</p>"
+        "<p>If this was you, please wait a few minutes before trying again.</p>"
+        "<p>If this was not you, someone may be trying to access your account. "
+        "Please reset your password here:</p>"
+        f'<p><a href="{forgot_password_url}">Reset password</a></p>'
+        "<p>If you reuse this password on other sites, we strongly recommend "
+        "changing it there as well.</p>"
+    )
+    await provider.send(to_email, subject, html_body, text_body)
+
+
 async def send_email_change_verification_email(
     provider: EmailProvider,
     to_email: str,

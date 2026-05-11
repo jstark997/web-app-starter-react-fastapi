@@ -1,5 +1,6 @@
 import logging
 import uuid
+from datetime import datetime
 
 logger = logging.getLogger("app.security")
 
@@ -18,6 +19,15 @@ def log_login_failure(email: str, ip: str, reason: str) -> None:
 
 def log_login_unverified(user_id: uuid.UUID, ip: str) -> None:
     _emit("auth.login.unverified", user_id=str(user_id), ip=ip)
+
+
+def log_account_locked(user_id: uuid.UUID, ip: str, locked_until: datetime) -> None:
+    _emit(
+        "auth.login.account_locked",
+        user_id=str(user_id),
+        ip=ip,
+        locked_until=locked_until.isoformat(),
+    )
 
 
 def log_register(user_id: uuid.UUID, email: str, ip: str) -> None:
