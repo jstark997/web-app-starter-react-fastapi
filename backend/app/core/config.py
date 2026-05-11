@@ -61,6 +61,25 @@ class Settings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def _require_real_frontend_url_in_production(self) -> "Settings":
+        # Guard against a production deploy that forgets to inject FRONTEND_URL.
+        # The default points at localhost, which silently lands all verification
+        # and password-reset email links on the operator's laptop instead of
+        # the real product domain.
+        if self.environment == "production":
+            url = self.frontend_url.lower()
+            if (
+                "localhost" in url
+                or "127.0.0.1" in url
+                or not url.startswith("https://")
+            ):
+                raise ValueError(
+                    "ENVIRONMENT=production requires FRONTEND_URL to be a real "
+                    f"https:// URL; got {self.frontend_url!r}."
+                )
+        return self
+
     @property
     def allowed_origins_list(self) -> list[str]:
         return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]

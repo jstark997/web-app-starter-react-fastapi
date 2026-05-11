@@ -1185,9 +1185,9 @@ pytest -v
 
 | Variable | Description | Example |
 |---|---|---|
-| `ENVIRONMENT` | Deployment environment: `development`, `production`, or `test`. When `production`, the app refuses to boot unless `DATABASE_URL` is a `postgresql://` URL. | `development` |
+| `ENVIRONMENT` | Deployment environment: `development`, `production`, or `test`. When `production`, the app refuses to boot unless `DATABASE_URL` is a `postgresql://` URL **and** `FRONTEND_URL` is an `https://` URL that doesn't contain `localhost` or `127.0.0.1`. | `development` |
 | `DATABASE_URL` | SQLAlchemy database URL | `sqlite+aiosqlite:///./dev.db` |
-| `FRONTEND_URL` | Base URL of the frontend (used in email links) | `http://localhost:5173` |
+| `FRONTEND_URL` | Base URL of the frontend (used in email links). **Required in production** — must be a real `https://` URL or the app will refuse to boot. | `http://localhost:5173` |
 | `ALLOWED_ORIGINS` | Comma-separated list of allowed CORS origins | `http://localhost:5173` |
 | `EMAIL_PROVIDER` | Email provider to use: `smtp`, `resend`, `mock` | `smtp` |
 | `EMAIL_FROM_ADDRESS` | Sender email address | `noreply@example.com` |

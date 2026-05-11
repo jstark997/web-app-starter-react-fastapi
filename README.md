@@ -137,9 +137,9 @@ Why this shape: same public origin → no CORS, no cross-site cookies, no leaked
 | Variable                  | Value                                                          | Notes                                                                 |
 |---------------------------|----------------------------------------------------------------|-----------------------------------------------------------------------|
 | `PORT`                    | `8080`                                                         | Must match the port in `frontend/Caddyfile`'s `reverse_proxy` line.   |
-| `ENVIRONMENT`             | `production`                                                   | Required. Setting this enables a startup check that refuses to boot unless `DATABASE_URL` is a `postgresql://` URL — guards against silent SQLite fallback if the Postgres plugin link is missing. |
+| `ENVIRONMENT`             | `production`                                                   | Required. Enables two startup checks: (1) `DATABASE_URL` must be `postgresql://` — guards against silent SQLite fallback; (2) `FRONTEND_URL` must be an `https://` URL that doesn't contain `localhost` or `127.0.0.1` — guards against email links pointing at your laptop. |
 | `DATABASE_URL`            | *(auto-injected by Postgres plugin)*                           | App rewrites `postgresql://` → `postgresql+asyncpg://` automatically. |
-| `FRONTEND_URL`            | `https://<frontend-service>.up.railway.app`                    | Used in outgoing email links.                                         |
+| `FRONTEND_URL`            | `https://<frontend-service>.up.railway.app`                    | Required. Used in outgoing email verification and password-reset links. App refuses to boot in production if this is missing or localhost. |
 | `ALLOWED_ORIGINS`         | `https://<frontend-service>.up.railway.app`                    | Same-origin in this topology, but keep set as a safety net.           |
 | `SESSION_COOKIE_SECURE`   | `true`                                                         | Required in prod (HTTPS).                                             |
 | `SESSION_COOKIE_SAMESITE` | `lax`                                                          | Same-origin via Caddy means `lax` is correct.                         |
