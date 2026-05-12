@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Dialog } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 
@@ -26,12 +26,14 @@ export function ConfirmDialog({
   confirmationText,
 }: ConfirmDialogProps) {
   const [inputValue, setInputValue] = useState('');
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
 
-  useEffect(() => {
+  if (prevIsOpen !== isOpen) {
+    setPrevIsOpen(isOpen);
     if (!isOpen) {
       setInputValue('');
     }
-  }, [isOpen]);
+  }
 
   const isConfirmDisabled = confirmationText
     ? inputValue !== confirmationText

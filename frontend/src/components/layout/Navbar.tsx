@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 import { MobileMenu } from '@/components/layout/MobileMenu';
 import type { NavItem } from '@/components/layout/MobileMenu';
 import { Button } from '@/components/ui';

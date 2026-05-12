@@ -1,9 +1,11 @@
-import { createContext, useCallback, useContext, useEffect, useReducer } from 'react';
+import { useCallback, useEffect, useReducer } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { getMe, login as apiLogin, logout as apiLogout } from '@/api/auth';
 import type { AuthUser, AuthState, LoginRequest } from '@/types';
+import { AuthContext } from './useAuth';
+import type { AuthContextValue } from './useAuth';
 
 type AuthAction =
   | { type: 'HYDRATE_SUCCESS'; user: AuthUser }
@@ -30,14 +32,6 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
       return { ...state, user: action.user };
   }
 }
-
-interface AuthContextValue extends AuthState {
-  login: (data: LoginRequest) => Promise<AuthUser>;
-  logout: () => Promise<void>;
-  updateUser: (user: AuthUser) => void;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -115,12 +109,4 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }

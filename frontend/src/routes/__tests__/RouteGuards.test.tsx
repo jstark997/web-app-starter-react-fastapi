@@ -37,7 +37,7 @@ let mockAuthValue = {
   updateUser: vi.fn(),
 };
 
-vi.mock('@/context/AuthContext', () => ({
+vi.mock('@/context/useAuth', () => ({
   useAuth: () => mockAuthValue,
 }));
 

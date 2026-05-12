@@ -53,7 +53,8 @@ src/api/whitelist.ts       # Whitelist API calls (get settings, toggle, add, rem
 **Files to produce:**
 
 ```
-src/context/AuthContext.tsx         # AuthProvider, useAuth hook
+src/context/AuthContext.tsx         # AuthProvider component
+src/context/useAuth.ts              # AuthContext object, AuthContextValue type, useAuth hook
 src/routes/PublicRoute.tsx          # Redirects authenticated users to /dashboard
 src/routes/ProtectedRoute.tsx       # Redirects unauthenticated users to /login
 src/routes/AdminRoute.tsx           # Redirects non-admin users to /dashboard

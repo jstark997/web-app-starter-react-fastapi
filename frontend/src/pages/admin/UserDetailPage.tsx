@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 import { getUser, deleteUser, deactivateUser, reactivateUser, forcePasswordReset } from '@/api/users';
 import { Button, Badge, Skeleton, ConfirmDialog } from '@/components/ui';
 import { EditUserModal } from '@/pages/admin/EditUserModal';

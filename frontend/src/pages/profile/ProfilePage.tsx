@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 import { updateProfile, changeEmail } from '@/api/profile';
 import { Input, PasswordInput, Button, Dialog, Badge } from '@/components/ui';
 import { profileSchema, changeEmailSchema } from '@/utils/validation';

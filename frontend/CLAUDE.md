@@ -65,7 +65,8 @@ src/
 │   ├── ui/                # Primitive, reusable UI components
 │   └── layout/            # AuthLayout, AppLayout, Navbar, MobileMenu
 ├── context/
-│   └── AuthContext.tsx    # Global auth state — single source of truth
+│   ├── AuthContext.tsx    # AuthProvider component — wraps the app with global auth state
+│   └── useAuth.ts         # AuthContext object, AuthContextValue type, and useAuth hook
 ├── hooks/                 # Custom React hooks
 ├── pages/
 │   ├── auth/              # Login, Register, ForgotPassword, ResetPassword, VerifyEmail
@@ -88,7 +89,7 @@ src/
   ```ts
   // Correct
   import { Button } from '@/components/ui'
-  import { useAuth } from '@/context/AuthContext'
+  import { useAuth } from '@/context/useAuth'
 
   // Wrong
   import { Button } from '../../components/ui'

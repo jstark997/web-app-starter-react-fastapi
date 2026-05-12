@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { resendVerification } from '@/api/auth';
 import { Button } from '@/components/ui';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 
 export default function VerifyPendingPage() {
   const { user, logout } = useAuth();

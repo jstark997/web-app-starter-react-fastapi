@@ -60,8 +60,11 @@ const mockUpdateUser = vi.fn<(user: AuthUser) => void>();
 let currentAuthValue: AuthContextValue;
 
 vi.mock('@/context/AuthContext', () => ({
-  useAuth: () => currentAuthValue,
   AuthProvider: ({ children }: { children: ReactNode }) => children,
+}));
+
+vi.mock('@/context/useAuth', () => ({
+  useAuth: () => currentAuthValue,
 }));
 
 function renderWithAuth(

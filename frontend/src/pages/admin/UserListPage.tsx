@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 import { listUsers, deleteUser, deactivateUser, reactivateUser, forcePasswordReset } from '@/api/users';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Button, Badge, Input, Table, Pagination, ConfirmDialog } from '@/components/ui';

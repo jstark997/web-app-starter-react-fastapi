@@ -42,7 +42,8 @@ react-starter/
 │   │   ├── ui/            # Primitive components (Button, Input, Badge, etc.)
 │   │   └── layout/        # Layout components (AuthLayout, AppLayout, etc.)
 │   ├── context/           # React Context providers
-│   │   └── AuthContext.tsx
+│   │   ├── AuthContext.tsx
+│   │   └── useAuth.ts
 │   ├── hooks/             # Custom React hooks
 │   ├── pages/             # Page-level components, organized by feature
 │   │   ├── auth/

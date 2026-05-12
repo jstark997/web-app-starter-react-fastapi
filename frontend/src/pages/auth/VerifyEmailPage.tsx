@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { verifyEmail, resendVerification } from '@/api/auth';
 import { Spinner, Button, Input } from '@/components/ui';
@@ -13,29 +13,31 @@ type VerifyState = 'loading' | 'success' | 'error';
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
-  const [state, setState] = useState<VerifyState>('loading');
-  const [errorMessage, setErrorMessage] = useState('');
-
-  const verify = useCallback(async (verifyToken: string) => {
-    try {
-      await verifyEmail({ token: verifyToken });
-      setState('success');
-    } catch (err) {
-      setState('error');
-      setErrorMessage(
-        err instanceof Error ? err.message : 'Verification failed. The link may be invalid or expired.',
-      );
-    }
-  }, []);
+  const [state, setState] = useState<VerifyState>(token ? 'loading' : 'error');
+  const [errorMessage, setErrorMessage] = useState(
+    token ? '' : 'No verification token provided.',
+  );
 
   useEffect(() => {
-    if (token) {
-      void verify(token);
-    } else {
-      setState('error');
-      setErrorMessage('No verification token provided.');
-    }
-  }, [token, verify]);
+    if (!token) return;
+    let cancelled = false;
+    verifyEmail({ token })
+      .then(() => {
+        if (!cancelled) setState('success');
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setState('error');
+        setErrorMessage(
+          err instanceof Error
+            ? err.message
+            : 'Verification failed. The link may be invalid or expired.',
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   if (state === 'loading') {
     return (
