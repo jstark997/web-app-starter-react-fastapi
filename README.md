@@ -89,7 +89,7 @@ make help           # list targets
 ## Security & dependency hygiene
 
 - Backend dependencies are **hash-pinned**. `backend/requirements.txt` and `backend/requirements-dev.txt` are generated from `backend/requirements.in` and `backend/requirements-dev.in` via `pip-compile --generate-hashes`. Every line carries a SHA-256, and `pip install --require-hashes` (used by `make install-backend`) refuses any package that doesn't match. **Never edit the `.txt` files by hand** — use `make lock-backend` instead. See [`backend/README.md`](./backend/README.md#adding-or-upgrading-a-dependency) for the dep-add workflow.
-- Frontend dependencies are content-addressed via `pnpm-lock.yaml` and installed with `pnpm install --frozen-lockfile`. The pnpm binary itself is pinned (with a SHA-512 integrity hash that Corepack verifies on install) via the `packageManager` field in [`frontend/package.json`](./frontend/package.json). See [`frontend/CLAUDE.md`](./frontend/CLAUDE.md#upgrading-pnpm) for the upgrade procedure.
+- Frontend dependencies are content-addressed via `pnpm-lock.yaml` and installed with `pnpm install --frozen-lockfile`. The pnpm binary version is pinned via the `packageManager` field in [`frontend/package.json`](./frontend/package.json) so CI, Docker, and local dev resolve to the exact same release. See [`frontend/CLAUDE.md`](./frontend/CLAUDE.md#upgrading-pnpm) for the upgrade procedure.
 - CI ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)) runs `pip-audit` and `pnpm audit --audit-level=high --prod` on every PR, every push to `main`, and **every Monday at 12:00 UTC** (weekly cron) so newly-disclosed CVEs against the locked versions are surfaced even when nothing has been pushed.
 
 ---

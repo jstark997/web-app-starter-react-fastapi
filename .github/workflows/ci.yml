@@ -72,6 +72,10 @@ jobs:
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
+        with:
+          # The action defaults to ./package.json at the repo root, which
+          # has no `packageManager` field. Point it at frontend's.
+          package_json_file: frontend/package.json
 
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
