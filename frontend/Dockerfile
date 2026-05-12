@@ -12,8 +12,9 @@ FROM node:lts-alpine AS build
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 ENV NPM_CONFIG_FUND=false
 
-# Enable Corepack so the `pnpm` version pinned in package.json (or the
-# default Corepack version, if none is pinned) is the one we use.
+# Enable Corepack so the pnpm version pinned in package.json's
+# `packageManager` field is the one we use. Corepack also verifies the
+# downloaded pnpm binary against the `+sha512-...` integrity tag.
 RUN corepack enable
 
 WORKDIR /app

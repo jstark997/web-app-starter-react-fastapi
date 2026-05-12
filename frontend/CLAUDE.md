@@ -30,6 +30,34 @@ This rule applies to:
 
 ---
 
+## Upgrading pnpm
+
+The pnpm version is pinned in `frontend/package.json` via the `packageManager` field (e.g. `"pnpm@10.8.1+sha512-..."`). The same pin is used by:
+- Corepack in the local shell (when `corepack enable` has been run)
+- Corepack in `frontend/Dockerfile`
+- `pnpm/action-setup@v4` in `.github/workflows/ci.yml`
+
+So changing this one field updates CI, Docker, and local dev in lock-step. To upgrade:
+
+```bash
+cd frontend
+corepack use pnpm@<new-version>   # writes the field with a fresh integrity hash
+pnpm install --frozen-lockfile    # confirm the lockfile still resolves cleanly
+```
+
+Commit the resulting one-line change to `package.json`.
+
+**Fallback if `corepack use` fails** with a signature-verification error ("Cannot find matching keyid") — this happens when local Corepack's hardcoded keys are out of date relative to a new pnpm release. Fetch the integrity hash directly from the npm registry and write the field manually:
+
+```bash
+curl -s https://registry.npmjs.org/pnpm/<new-version> | jq -r .dist.integrity
+# → sha512-<base64>
+```
+
+Then set `"packageManager": "pnpm@<new-version>+sha512-<base64>"` in `package.json` by hand.
+
+---
+
 ## Project Structure
 
 ```
