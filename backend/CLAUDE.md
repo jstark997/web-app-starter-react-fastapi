@@ -23,8 +23,21 @@ Use the **DocsExplorer** subagent for efficient documentation lookup.
 
 This rule applies to:
 - Any library listed in the Technology Stack below
-- Any library found in `requirements.txt`
+- Any library found in `requirements.in` / `requirements-dev.in`
 - Any API, service, or tool not part of the Python standard library
+
+---
+
+## Dependencies
+
+`requirements.txt` and `requirements-dev.txt` are **generated and hash-pinned** by `pip-compile --generate-hashes`. They are not edited by hand.
+
+- **Source of truth:** `requirements.in` (prod) and `requirements-dev.in` (dev/test). Pin packages with `==`.
+- **To add or upgrade a package:** edit the relevant `.in` file, then run `make lock-backend` from the repo root. Commit both `.in` and `.txt` together. CI's lockfile-drift check fails any PR where they're out of sync.
+- **All-or-nothing hash mode:** once any line in a requirements file has `--hash=`, pip refuses to install any package without one. So `pip install some-package` ad-hoc into the dev venv will fail — go through the lockfile workflow instead.
+- **Install command:** `pip install --require-hashes -r requirements.txt -r requirements-dev.txt`.
+
+The full workflow with examples lives in [`backend/README.md`](./README.md#adding-or-upgrading-a-dependency).
 
 ---
 

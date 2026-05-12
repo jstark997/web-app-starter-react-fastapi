@@ -1,0 +1,23 @@
+# =============================================================================
+# Direct development and test dependencies for the backend.
+#
+# Production deploys (Railway) only install requirements.txt, so pip-tools,
+# pip-audit, and pytest are never on the deploy image.
+#
+# This file is the source of truth for dev/test deps. Edit this, then run
+# `make lock-backend` from the repo root to regenerate
+# `requirements-dev.txt`.
+# =============================================================================
+
+# Reuse the locked production versions for any transitively-shared deps.
+-c requirements.txt
+
+# Lockfile + audit tooling
+pip-tools==7.5.3
+pip-audit==2.7.3
+
+# Test framework
+pytest==9.0.2
+pytest-asyncio==1.3.0
+pytest-cov==7.1.0
+httpx==0.28.1     # used by FastAPI TestClient in tests/conftest.py

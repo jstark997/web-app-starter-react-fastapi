@@ -46,8 +46,10 @@ source .venv/bin/activate          # macOS / Linux
 ### 2. Install dependencies
 
 ```bash
-pip install -r requirements.txt
+pip install --require-hashes -r requirements.txt -r requirements-dev.txt
 ```
+
+`requirements.txt` and `requirements-dev.txt` are **generated, hash-pinned** lockfiles — `pip install --require-hashes` refuses any package whose SHA-256 doesn't match the committed file. To add or upgrade a package, see [Adding or upgrading a dependency](#adding-or-upgrading-a-dependency) below.
 
 ### 3. Configure environment variables
 
@@ -120,6 +122,55 @@ alembic revision --autogenerate -m "describe the change"
 # Rollback one migration
 alembic downgrade -1
 ```
+
+---
+
+## Adding or upgrading a dependency
+
+`requirements.txt` and `requirements-dev.txt` are generated and hash-pinned. **Never edit them by hand** — CI's lockfile-drift check will fail the PR, and even if it slips through, pip's hash mode is all-or-nothing globally and the deploy install will refuse.
+
+1. Edit `backend/requirements.in` for production deps, or `backend/requirements-dev.in` for dev/test tools. Pin with `==` for reproducibility.
+2. From the repo root, run:
+   ```bash
+   make lock-backend
+   ```
+   This regenerates both `.txt` lockfiles with `--hash=sha256:...` entries via `pip-compile --generate-hashes`.
+3. Re-install in your venv:
+   ```bash
+   pip install --require-hashes -r requirements.txt -r requirements-dev.txt
+   ```
+4. Run tests and audit locally:
+   ```bash
+   make test-backend
+   make audit-backend
+   ```
+5. Commit **both** the `.in` and `.txt` files together. CI will fail the PR if they're out of sync.
+
+**Gotcha:** pip's hash mode is all-or-nothing globally — once any line in a requirements file has a `--hash=` entry, pip refuses to install any package without one. So `pip install some-package` ad-hoc into the dev venv will fail unless `some-package` is already in the hashed lockfile. This is intentional. Add it through step 1 instead.
+
+---
+
+## Auditing dependencies
+
+```bash
+# Run the same audit the CI workflow runs against production deps
+make audit-backend
+```
+
+This runs `pip-audit --requirement requirements.txt --strict` against the locked versions. It exits non-zero on any advisory.
+
+The CI workflow ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) runs the same command on every PR, every push to `main`, and **every Monday at 12:00 UTC** (weekly cron) so newly-disclosed CVEs surface even when no PR has touched the repo.
+
+### Accepting a known finding
+
+If a CVE is fixed in an unreleased version, or the advisory doesn't apply (e.g. the vulnerable code path isn't reachable), document and ignore it explicitly:
+
+```bash
+pip-audit --requirement requirements.txt --strict \
+  --ignore-vuln GHSA-xxxx-xxxx-xxxx   # short justification next to the flag
+```
+
+Add the same `--ignore-vuln` flag (with a comment explaining why) to the `audit-backend` Makefile target and to the `pip-audit` step in `.github/workflows/ci.yml`. Re-evaluate every ignored finding when bumping the relevant package.
 
 ---
 

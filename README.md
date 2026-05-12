@@ -78,9 +78,19 @@ make test           # pytest + vitest
 make test-backend   # backend only
 make test-frontend  # frontend only
 make build          # production build of the frontend (dist/)
+make lock-backend   # regenerate backend requirements*.txt (hashed) from .in files
+make audit          # pip-audit + pnpm audit (matches CI)
 make clean          # remove venv, node_modules, dist, caches
 make help           # list targets
 ```
+
+---
+
+## Security & dependency hygiene
+
+- Backend dependencies are **hash-pinned**. `backend/requirements.txt` and `backend/requirements-dev.txt` are generated from `backend/requirements.in` and `backend/requirements-dev.in` via `pip-compile --generate-hashes`. Every line carries a SHA-256, and `pip install --require-hashes` (used by `make install-backend`) refuses any package that doesn't match. **Never edit the `.txt` files by hand** — use `make lock-backend` instead. See [`backend/README.md`](./backend/README.md#adding-or-upgrading-a-dependency) for the dep-add workflow.
+- Frontend dependencies are content-addressed via `pnpm-lock.yaml` and installed with `pnpm install --frozen-lockfile`.
+- CI ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)) runs `pip-audit` and `pnpm audit --audit-level=high --prod` on every PR, every push to `main`, and **every Monday at 12:00 UTC** (weekly cron) so newly-disclosed CVEs against the locked versions are surfaced even when nothing has been pushed.
 
 ---
 

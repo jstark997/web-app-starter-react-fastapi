@@ -1,0 +1,39 @@
+# =============================================================================
+# Direct production dependencies for the backend.
+#
+# This file is the source of truth for production deps. Edit this, then run
+# `make lock-backend` from the repo root to regenerate the hashed
+# `requirements.txt` lockfile via `pip-compile --generate-hashes`.
+#
+# Never edit requirements.txt by hand — it is generated and hash-pinned.
+# =============================================================================
+
+# Web framework
+fastapi==0.135.2
+uvicorn[standard]==0.42.0
+
+# Database (async SQLAlchemy + drivers)
+sqlalchemy[asyncio]==2.0.48
+alembic==1.18.4
+aiosqlite==0.22.1     # SQLite driver for local development
+asyncpg==0.31.0       # PostgreSQL driver for production
+
+# Validation & settings
+pydantic==2.12.5
+pydantic-settings==2.13.1
+email-validator==2.3.0
+python-multipart==0.0.27   # fixes GHSA-mj87-hwqh-73pj, GHSA-pp6c-gr5w-3c5g (< 0.0.27)
+python-dotenv==1.2.2
+
+# Security overrides for transitive dependencies. Listed here so pip-compile
+# forces a fixed version; remove each line once the parent package naturally
+# pulls in a fixed release.
+mako>=1.3.12               # via alembic; GHSA-2h4p-vjrc-8xpq (< 1.3.12)
+urllib3>=2.7.0             # via resend → requests; GHSA-qccp-gfcp-xxvc, GHSA-mf9v-mfxr-j63j (< 2.7.0)
+
+# Auth & rate limiting
+bcrypt==4.0.1
+slowapi==0.1.9
+
+# Email providers
+resend==2.27.0
