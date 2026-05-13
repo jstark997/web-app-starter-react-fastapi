@@ -80,6 +80,20 @@ class Settings(BaseSettings):
                 )
         return self
 
+    @model_validator(mode="after")
+    def _require_secure_session_cookie_in_production(self) -> "Settings":
+        # Guard against a production deploy that forgets to flip
+        # SESSION_COOKIE_SECURE. Without the Secure flag, the session
+        # cookie can leak over a downgraded HTTP request even on an
+        # HTTPS-only deploy.
+        if self.environment == "production" and not self.session_cookie_secure:
+            raise ValueError(
+                "ENVIRONMENT=production requires SESSION_COOKIE_SECURE=true; "
+                "the session cookie must carry the Secure flag so it is never "
+                "sent over plain HTTP."
+            )
+        return self
+
     @property
     def allowed_origins_list(self) -> list[str]:
         return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]

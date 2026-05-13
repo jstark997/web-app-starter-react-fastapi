@@ -28,6 +28,7 @@ def test_production_accepts_legacy_postgres_scheme_after_normalization():
         environment="production",
         database_url="postgres://u:p@h/db",
         frontend_url="https://app.example.com",
+        session_cookie_secure=True,
     )
 
     assert settings.database_url == "postgresql+asyncpg://u:p@h/db"
@@ -75,6 +76,7 @@ def test_production_accepts_real_https_frontend_url():
         environment="production",
         database_url="postgresql+asyncpg://u:p@h/db",
         frontend_url="https://app.example.com",
+        session_cookie_secure=True,
     )
 
     assert settings.frontend_url == "https://app.example.com"
@@ -88,3 +90,34 @@ def test_development_allows_localhost_frontend_url():
     )
 
     assert settings.frontend_url == "http://localhost:5173"
+
+
+def test_production_rejects_insecure_session_cookie():
+    with pytest.raises(ValidationError) as exc_info:
+        Settings(
+            _env_file=None,
+            environment="production",
+            database_url="postgresql+asyncpg://u:p@h/db",
+            frontend_url="https://app.example.com",
+            session_cookie_secure=False,
+        )
+
+    assert "SESSION_COOKIE_SECURE" in str(exc_info.value)
+
+
+def test_production_accepts_secure_session_cookie():
+    settings = Settings(
+        _env_file=None,
+        environment="production",
+        database_url="postgresql+asyncpg://u:p@h/db",
+        frontend_url="https://app.example.com",
+        session_cookie_secure=True,
+    )
+
+    assert settings.session_cookie_secure is True
+
+
+def test_development_allows_insecure_session_cookie():
+    settings = Settings(_env_file=None, environment="development")
+
+    assert settings.session_cookie_secure is False

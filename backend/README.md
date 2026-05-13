@@ -223,7 +223,7 @@ ADMIN_LAST_NAME=User
 
 | Variable | Description | Example |
 |---|---|---|
-| `ENVIRONMENT` | Deployment environment: `development`, `production`, or `test`. When `production`, the app refuses to boot unless `DATABASE_URL` is a `postgresql://` URL **and** `FRONTEND_URL` is an `https://` URL that doesn't contain `localhost` or `127.0.0.1`. | `development` |
+| `ENVIRONMENT` | Deployment environment: `development`, `production`, or `test`. When `production`, the app refuses to boot unless `DATABASE_URL` is a `postgresql://` URL, `FRONTEND_URL` is an `https://` URL that doesn't contain `localhost` or `127.0.0.1`, **and** `SESSION_COOKIE_SECURE=true`. | `development` |
 | `DATABASE_URL` | SQLAlchemy async database URL | `sqlite+aiosqlite:///./dev.db` |
 | `FRONTEND_URL` | Base URL of the frontend, used in email links (no trailing slash). **Required in production** — must be a real `https://` URL or the app will refuse to boot. | `http://localhost:5173` |
 | `ALLOWED_ORIGINS` | Comma-separated list of allowed CORS origins | `http://localhost:5173` |
@@ -235,7 +235,7 @@ ADMIN_LAST_NAME=User
 | `SMTP_USER` | SMTP username (`smtp` only) | `noreply@example.com` |
 | `SMTP_PASSWORD` | SMTP password (`smtp` only) | `smtp-password` |
 | `RESEND_API_KEY` | Resend API key (`resend` only) | `re_...` |
-| `SESSION_COOKIE_SECURE` | Set the `Secure` flag on the session cookie (use `true` in production over HTTPS) | `false` |
+| `SESSION_COOKIE_SECURE` | Set the `Secure` flag on the session cookie. **Required `true` in production** — the app refuses to boot when `ENVIRONMENT=production` and this is `false`, since a missing `Secure` flag lets the session cookie leak over a downgraded HTTP request. | `false` |
 | `RATE_LIMIT_ENABLED` | Enable rate limiting on auth endpoints (set `false` in tests) | `true` |
 | `LOG_FORMAT` | Log output format: `json` (one structured JSON object per line — recommended for any deployed environment) or `plain` (human-readable, easier to scan locally) | `json` |
 | `ADMIN_EMAIL` | Seed admin email — set all four `ADMIN_*` vars to seed | `admin@example.com` |
