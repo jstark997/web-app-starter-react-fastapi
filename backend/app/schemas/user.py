@@ -5,6 +5,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from pydantic.alias_generators import to_camel
 
+from app.core.security import MAX_PASSWORD_BYTES, validate_password_bytes
+
 _AVATAR_DATA_URI_RE = re.compile(
     r"^data:image/(png|jpeg|jpg|webp|gif|svg\+xml);base64,"
 )
@@ -112,11 +114,13 @@ class ChangeEmailRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
     new_email: EmailStr
-    current_password: str
+    current_password: str = Field(max_length=MAX_PASSWORD_BYTES)
 
 
 class ChangePasswordRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    current_password: str
-    new_password: str = Field(min_length=8)
+    current_password: str = Field(max_length=MAX_PASSWORD_BYTES)
+    new_password: str = Field(min_length=8, max_length=MAX_PASSWORD_BYTES)
+
+    _validate_new_password_bytes = field_validator("new_password")(validate_password_bytes)

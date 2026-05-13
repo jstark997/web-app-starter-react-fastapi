@@ -291,6 +291,14 @@ async def test_change_password_short_password_returns_422(auth_client):
     assert response.status_code == 422
 
 
+async def test_change_password_long_password_returns_422(auth_client):
+    response = await auth_client.post(
+        "/api/auth/change-password",
+        json={"currentPassword": TEST_PASSWORD, "newPassword": "a" * 73},
+    )
+    assert response.status_code == 422
+
+
 async def test_change_password_unauthenticated(test_client):
     response = await test_client.post(
         "/api/auth/change-password",

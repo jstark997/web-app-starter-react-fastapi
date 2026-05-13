@@ -240,6 +240,7 @@ All protected endpoints declare one of these as a dependency. Endpoints that do 
 
 - Passwords are hashed using the `bcrypt` library directly.
 - Minimum password length: 8 characters (enforced by Pydantic schema).
+- Maximum password length: 72 bytes when UTF-8 encoded (bcrypt's truncation boundary). Enforced by Pydantic on every endpoint that accepts a password — register, login, reset-password, change-password, change-email — and mirrored client-side by the Zod schemas. Inputs longer than 72 bytes return `422 Unprocessable Entity`.
 - Plaintext passwords are never logged or stored.
 - Password comparison uses `bcrypt.checkpw()`, which performs a constant-time comparison to prevent timing attacks.
 
@@ -359,7 +360,7 @@ Creates a new user account and sends a verification email.
 
 **Error responses:**
 - `403 Forbidden` — email not on whitelist (`"whitelistRestricted": true` in detail)
-- `422 Unprocessable Entity` — validation error (invalid email, password too short)
+- `422 Unprocessable Entity` — validation error (invalid email, password too short or too long)
 - `429 Too Many Requests` — rate limit exceeded
 
 ---
@@ -456,7 +457,7 @@ Resets a user's password using a token from the reset email.
 
 **Error responses:**
 - `400 Bad Request` — token invalid, expired, or already used
-- `422 Unprocessable Entity` — password too short
+- `422 Unprocessable Entity` — password too short or too long
 
 ---
 
@@ -565,7 +566,7 @@ Changes the current user's password.
 
 **Error responses:**
 - `400 Bad Request` — current password incorrect
-- `422 Unprocessable Entity` — new password too short
+- `422 Unprocessable Entity` — new password too short or too long
 
 ---
 

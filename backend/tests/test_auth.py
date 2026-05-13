@@ -411,6 +411,33 @@ async def test_register_short_password(test_client):
     assert response.status_code == 422
 
 
+async def test_register_long_password_returns_422(test_client):
+    response = await test_client.post(
+        "/api/auth/register",
+        json={
+            "email": "long@test.com",
+            "password": "a" * 73,
+            "firstName": "Long",
+            "lastName": "Pass",
+        },
+    )
+    assert response.status_code == 422
+
+
+async def test_register_multibyte_password_over_byte_limit_returns_422(test_client):
+    # 36 emoji = 72 characters but 144 UTF-8 bytes, exceeding bcrypt's 72-byte limit
+    response = await test_client.post(
+        "/api/auth/register",
+        json={
+            "email": "emoji@test.com",
+            "password": "🔒" * 36,
+            "firstName": "Emoji",
+            "lastName": "Pass",
+        },
+    )
+    assert response.status_code == 422
+
+
 # --- Verify Email ---
 
 
@@ -595,6 +622,14 @@ async def test_reset_password_invalid_token(test_client):
         json={"token": "nonexistent-token", "password": "newpassword123"},
     )
     assert response.status_code == 400
+
+
+async def test_reset_password_long_password_returns_422(test_client):
+    response = await test_client.post(
+        "/api/auth/reset-password",
+        json={"token": "any-token", "password": "a" * 73},
+    )
+    assert response.status_code == 422
 
 
 # --- Logout ---

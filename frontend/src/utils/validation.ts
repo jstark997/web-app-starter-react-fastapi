@@ -2,11 +2,17 @@ import { z } from 'zod';
 
 export const emailSchema = z.string().min(1, { error: 'Email is required.' }).email({ error: 'Please enter a valid email address.' });
 
-export const passwordSchema = z.string().min(8, { error: 'Password must be at least 8 characters.' });
+export const passwordSchema = z
+  .string()
+  .min(8, { error: 'Password must be at least 8 characters.' })
+  .max(72, { error: 'Password must be 72 characters or fewer.' });
 
 export const loginSchema = z.object({
   email: emailSchema,
-  password: z.string().min(1, { error: 'Password is required.' }),
+  password: z
+    .string()
+    .min(1, { error: 'Password is required.' })
+    .max(72, { error: 'Password must be 72 characters or fewer.' }),
   rememberMe: z.boolean(),
 });
 
@@ -63,7 +69,10 @@ export type ProfileFormInput = z.input<typeof profileSchema>;
 export type ProfileFormData = z.infer<typeof profileSchema>;
 
 export const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, { error: 'Current password is required.' }),
+  currentPassword: z
+    .string()
+    .min(1, { error: 'Current password is required.' })
+    .max(72, { error: 'Password must be 72 characters or fewer.' }),
   newPassword: passwordSchema,
   confirmNewPassword: z.string().min(1, { error: 'Please confirm your new password.' }),
 }).refine(
@@ -78,7 +87,10 @@ export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 
 export const changeEmailSchema = z.object({
   newEmail: emailSchema,
-  currentPassword: z.string().min(1, { error: 'Password is required.' }),
+  currentPassword: z
+    .string()
+    .min(1, { error: 'Password is required.' })
+    .max(72, { error: 'Password must be 72 characters or fewer.' }),
 });
 
 export type ChangeEmailFormData = z.infer<typeof changeEmailSchema>;
