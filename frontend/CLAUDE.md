@@ -10,10 +10,10 @@ It is the frontend half of a two-project starter system. The companion backend i
 
 ## Key Documents
 
-- **`SPEC.md`** — The authoritative feature specification. Read this to understand what to build, how each feature behaves, and what the acceptance criteria are. When in doubt about a feature, the spec is the source of truth.
-- **`DEV-PLAN.md`** — The phased development plan. Each phase has a goal, a list of files to produce, key decisions, and a completion checklist.
+- **`STARTER-SPEC.md`** — The authoritative feature specification. Read this to understand what to build, how each feature behaves, and what the acceptance criteria are. When in doubt about a feature, the spec is the source of truth.
+- **`STARTER-DEV-PLAN.md`** — The phased development plan. Each phase has a goal, a list of files to produce, key decisions, and a completion checklist.
 
-Always read `SPEC.md` before implementing any feature.
+Always read `STARTER-SPEC.md` before implementing any feature.
 
 ---
 
@@ -165,7 +165,7 @@ src/
 
 ## Authentication & Auth State
 
-Auth state behaviour and the `AuthUser` interface are fully documented in `SPEC.md` sections 3.3, 3.4, and 5.1.7.
+Auth state behaviour and the `AuthUser` interface are fully documented in `STARTER-SPEC.md` sections 3.3, 3.4, and 5.1.7.
 
 **Critical implementation note — avoid circular dependency:** Never import `AuthContext` from `src/api/client.ts`. This creates a circular dependency. Instead, `client.ts` signals session expiry by dispatching `window.dispatchEvent(new Event('auth:expired'))`, and `AuthContext` listens for that event. Keep these two modules decoupled.
 
@@ -173,7 +173,7 @@ Auth state behaviour and the `AuthUser` interface are fully documented in `SPEC.
 
 ## Route Guards
 
-Route guard behaviour and the full route map are documented in `SPEC.md` sections 4.1 and 4.2.
+Route guard behaviour and the full route map are documented in `STARTER-SPEC.md` sections 4.1 and 4.2.
 
 Route definitions use React Router v7's `createBrowserRouter` and live in `src/routes/index.tsx`. The three guard components (`PublicRoute`, `ProtectedRoute`, `AdminRoute`) live in `src/routes/`.
 
@@ -192,7 +192,7 @@ Route definitions use React Router v7's `createBrowserRouter` and live in `src/r
 - Wrap components that use routing in `MemoryRouter` or use the router provided by `renderWithAuth`.
 - Test behaviour, not implementation. Assert on what the user sees and what functions are called — not on internal state.
 
-**What must be tested:** See `SPEC.md` sections 10.1 and 10.2 for the full list of required test cases and what to explicitly exclude.
+**What must be tested:** See `STARTER-SPEC.md` sections 10.1 and 10.2 for the full list of required test cases and what to explicitly exclude.
 
 ---
 

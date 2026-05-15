@@ -6,7 +6,7 @@ This plan breaks the implementation of `fastapi-starter` into discrete phases. P
 
 Phases build on each other — complete them in order. Do not carry failing tests or broken imports into the next phase.
 
-The authoritative feature and API reference is `API-SPEC.md`. When starting a Claude Code session for any phase, instruct Claude Code to read both `CLAUDE.md` and `API-SPEC.md` before writing any code.
+The authoritative feature and API reference is `STARTER-API-SPEC.md`. When starting a Claude Code session for any phase, instruct Claude Code to read both `CLAUDE.md` and `STARTER-API-SPEC.md` before writing any code.
 
 ---
 
@@ -106,7 +106,7 @@ touch app/__init__.py \
       tests/__init__.py
 ```
 
-**Create `.env.example`** — populate with all variables from `API-SPEC.md` section 9.
+**Create `.env.example`** — populate with all variables from `STARTER-API-SPEC.md` section 9.
 
 **Commit:**
 ```bash
@@ -134,7 +134,7 @@ app/main.py                # Minimal FastAPI app — no routes yet, just startup
 ```
 
 **Key decisions for Claude Code:**
-- `config.py` uses `pydantic-settings` `BaseSettings`. All variables from `API-SPEC.md` section 9 must be present with appropriate types and defaults.
+- `config.py` uses `pydantic-settings` `BaseSettings`. All variables from `STARTER-API-SPEC.md` section 9 must be present with appropriate types and defaults.
 - `database.py` creates an async engine using `DATABASE_URL`. Provide a `get_db` async generator dependency for use in route handlers.
 - All models inherit from a shared `Base = declarative_base()` in `database.py`.
 - UUIDs are used as primary keys on all models except `WhitelistSettings` (which uses integer `id = 1`).
@@ -204,7 +204,7 @@ git commit -m "chore(db): initialise alembic and add initial schema migration"
 
 ## Phase 3 — Core Security & Email Foundation
 
-**Goal:** Implement the security utilities (password hashing, token generation) and the provider-agnostic email system defined in `API-SPEC.md` section 7.
+**Goal:** Implement the security utilities (password hashing, token generation) and the provider-agnostic email system defined in `STARTER-API-SPEC.md` section 7.
 
 **Files to produce:**
 
@@ -458,7 +458,7 @@ tests/test_whitelist.py         # Tests for all whitelist endpoints and registra
 
 ## Phase 9 — Rate Limiting
 
-**Goal:** Add rate limiting to the sensitive auth endpoints as specified in `API-SPEC.md` section 6.1.
+**Goal:** Add rate limiting to the sensitive auth endpoints as specified in `STARTER-API-SPEC.md` section 6.1.
 
 **Files to produce:**
 
@@ -469,7 +469,7 @@ app/core/rate_limit.py      # Rate limiting middleware or dependency
 **Key decisions for Claude Code:**
 - Use `slowapi` (a popular FastAPI-compatible rate limiting library). Add it to `requirements.txt`.
 - Rate limits are applied per IP address using the `X-Forwarded-For` header (since the app sits behind Caddy) with a fallback to `request.client.host`.
-- Apply the following limits per `API-SPEC.md` section 6.1:
+- Apply the following limits per `STARTER-API-SPEC.md` section 6.1:
   - `POST /api/auth/login` — 10/minute
   - `POST /api/auth/register` — 5/minute
   - `POST /api/auth/forgot-password` — 5/minute
@@ -531,7 +531,7 @@ app/main.py     # Updated with all routers registered and email provider wired u
 
 It should include:
 - What the project is — a standalone FastAPI starter providing authentication and user administration via a REST API
-- References to `API-SPEC.md` and `API-DEV-PLAN.md`
+- References to `STARTER-API-SPEC.md` and `STARTER-API-DEV-PLAN.md`
 - Full technology stack
 - Annotated project structure (directory purposes)
 - Coding conventions:
@@ -565,7 +565,7 @@ It must include:
 - How to switch email providers
 - Environment variable reference (mirroring `.env.example`)
 - How to use as a starter (clone and adapt)
-- Link to `API-SPEC.md` for full API documentation
+- Link to `STARTER-API-SPEC.md` for full API documentation
 
 **Completion checklist:**
 - [ ] Setup instructions are accurate when followed from a clean clone
@@ -599,7 +599,7 @@ It must include:
 ## Working with Claude Code
 
 **Starting a session:** Always begin with:
-> "Please read CLAUDE.md and API-SPEC.md before starting."
+> "Please read CLAUDE.md and STARTER-API-SPEC.md before starting."
 
 **Scope per session:** Hand Claude Code one phase at a time. If a phase feels too large, split it — for example Phase 5 could be split into `login/logout/me` in one session and `register/verify/forgot/reset` in another.
 

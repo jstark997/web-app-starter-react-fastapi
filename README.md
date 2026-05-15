@@ -16,12 +16,13 @@ web-app-starter-react-fastapi/
 │   ├── railway.json  # Railpack builder + preDeploy alembic + start cmd
 │   ├── .python-version
 │   └── ...
+├── docs/app/         # Product-specific specs (separate from starter specs)
 ├── Makefile          # Top-level dev targets
 ├── README.md         # ← you are here
 └── .gitignore
 ```
 
-For stack-specific architecture, conventions, and feature specs, see [`frontend/README.md`](./frontend/README.md), [`frontend/CLAUDE.md`](./frontend/CLAUDE.md), [`frontend/SPEC.md`](./frontend/SPEC.md), [`backend/README.md`](./backend/README.md), [`backend/CLAUDE.md`](./backend/CLAUDE.md), and [`backend/API-SPEC.md`](./backend/API-SPEC.md).
+For stack-specific architecture, conventions, and feature specs, see [`frontend/README.md`](./frontend/README.md), [`frontend/CLAUDE.md`](./frontend/CLAUDE.md), [`frontend/STARTER-SPEC.md`](./frontend/STARTER-SPEC.md), [`backend/README.md`](./backend/README.md), [`backend/CLAUDE.md`](./backend/CLAUDE.md), and [`backend/STARTER-API-SPEC.md`](./backend/STARTER-API-SPEC.md). Product-specific specs for the app you're building on top of this starter live in [`docs/app/`](./docs/app/README.md).
 
 ---
 
@@ -155,7 +156,7 @@ Why this shape: same public origin → no CORS, no cross-site cookies, no leaked
 | `SESSION_COOKIE_SAMESITE` | `lax`                                                          | Same-origin via Caddy means `lax` is correct.                         |
 | `EMAIL_PROVIDER`          | `smtp` / `resend` / `mock`                                     | Plus the matching provider creds (see `backend/.env.example`).        |
 | `RATE_LIMIT_ENABLED`      | `true`                                                         |                                                                       |
-| `LOG_FORMAT`              | `json`                                                         | Emits one structured JSON line per log record so security events (e.g. `event=auth.login.failure`) can be filtered in Railway's log explorer. See [`backend/API-SPEC.md` §6.6](./backend/API-SPEC.md#66-security-event-logging) for the full event schema. |
+| `LOG_FORMAT`              | `json`                                                         | Emits one structured JSON line per log record so security events (e.g. `event=auth.login.failure`) can be filtered in Railway's log explorer. See [`backend/STARTER-API-SPEC.md` §6.6](./backend/STARTER-API-SPEC.md#66-security-event-logging) for the full event schema. |
 | `ADMIN_*` (optional)      | seed an admin on first deploy                                  | See `backend/.env.example`.                                           |
 
 The `backend/railway.json` already wires up:

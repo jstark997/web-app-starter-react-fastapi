@@ -4,7 +4,7 @@
 
 This plan breaks the implementation of `react-starter` into discrete phases, each scoped to work well within a single Claude Code session. Each phase has a clear goal, a defined set of files to produce, and a completion checklist. Phases build on each other — complete them in order.
 
-The authoritative feature reference is `SPEC.md`. When starting a Claude Code session for any phase, instruct Claude Code to read both `CLAUDE.md` and `SPEC.md` before writing any code.
+The authoritative feature reference is `STARTER-SPEC.md`. When starting a Claude Code session for any phase, instruct Claude Code to read both `CLAUDE.md` and `STARTER-SPEC.md` before writing any code.
 
 ---
 
@@ -392,7 +392,7 @@ README.md    # Human-readable project overview and setup guide
 - How to build for production
 - Environment variable reference (mirroring `.env.example`)
 - How to use as a starter (clone, remove placeholder dashboard, build your app)
-- Link to `SPEC.md` for full feature documentation
+- Link to `STARTER-SPEC.md` for full feature documentation
 
 **Completion checklist:**
 
@@ -426,7 +426,7 @@ README.md    # Human-readable project overview and setup guide
 
 **Starting a session:** Always begin with:
 
-> "Please read CLAUDE.md and SPEC.md before starting."
+> "Please read CLAUDE.md and STARTER-SPEC.md before starting."
 
 **Scope per session:** Hand Claude Code one phase at a time. If a phase feels too large for a single session, split it at a natural boundary (e.g. Phase 5 could be split into Login + Register in one session, and the remaining three pages in another).
 

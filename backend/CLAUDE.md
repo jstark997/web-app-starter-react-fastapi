@@ -8,10 +8,10 @@ This file is read automatically by Claude Code at the start of every session. Re
 
 ## Key Documents
 
-- **`API-SPEC.md`** — The authoritative API specification. Read this to understand every endpoint, its request/response shape, error codes, and behavioural rules. When in doubt about how something should work, the spec is the source of truth.
-- **`API-DEV-PLAN.md`** — The phased development plan. Each phase has a goal, a list of files to produce, key decisions, and a completion checklist.
+- **`STARTER-API-SPEC.md`** — The authoritative API specification. Read this to understand every endpoint, its request/response shape, error codes, and behavioural rules. When in doubt about how something should work, the spec is the source of truth.
+- **`STARTER-API-DEV-PLAN.md`** — The phased development plan. Each phase has a goal, a list of files to produce, key decisions, and a completion checklist.
 
-Always read `API-SPEC.md` before implementing any endpoint or service function.
+Always read `STARTER-API-SPEC.md` before implementing any endpoint or service function.
 
 ---
 
@@ -43,7 +43,7 @@ The full workflow with examples lives in [`backend/README.md`](./README.md#addin
 
 ## Project Structure
 
-The full directory tree is documented in `API-SPEC.md` section 3.1. The purpose of each directory is as follows:
+The full directory tree is documented in `STARTER-API-SPEC.md` section 3.1. The purpose of each directory is as follows:
 
 | Directory / File | Purpose |
 |---|---|
@@ -159,7 +159,7 @@ user.first_name = body.first_name  # overwrites with None if field was omitted
 
 ### Error Responses
 
-- Use `HTTPException` with the status codes and messages specified in `API-SPEC.md`.
+- Use `HTTPException` with the status codes and messages specified in `STARTER-API-SPEC.md`.
 - The `detail` field must be a human-readable string unless the spec specifies additional structured fields (e.g. `whitelistRestricted: true` on registration rejection).
 - Do not expose internal error details (stack traces, SQL errors) in responses.
 
@@ -175,19 +175,19 @@ Check `current_user.id != target_user_id` before any such operation and raise `H
 
 ## Authentication & Session Management
 
-Session behaviour, cookie flags, and expiry rules are fully documented in `API-SPEC.md` sections 3.3 and 4.
+Session behaviour, cookie flags, and expiry rules are fully documented in `STARTER-API-SPEC.md` sections 3.3 and 4.
 
 **Critical implementation notes:**
 - The `session_id` cookie must be set with `httponly=True`, `samesite="lax"`, and `secure=settings.SESSION_COOKIE_SECURE`.
 - `get_current_user` raises `HTTPException(401)` for a missing, expired, or invalid session — never `403`.
 - `require_admin` raises `HTTPException(403)` for an authenticated non-admin — never `401`.
-- `invalidate_session(db, session_id)` invalidates one session. `invalidate_all_sessions(db, user_id)` invalidates all sessions for a user. Know which to call — see `API-SPEC.md` for which endpoints require each.
+- `invalidate_session(db, session_id)` invalidates one session. `invalidate_all_sessions(db, user_id)` invalidates all sessions for a user. Know which to call — see `STARTER-API-SPEC.md` for which endpoints require each.
 
 ---
 
 ## Token Handling
 
-Token security rules are documented in `API-SPEC.md` section 4.3.
+Token security rules are documented in `STARTER-API-SPEC.md` section 4.3.
 
 **Critical implementation notes:**
 - On consumption, set `token.used_at = datetime.now(timezone.utc)` — never delete the token record.
@@ -210,7 +210,7 @@ Token security rules are documented in `API-SPEC.md` section 4.3.
 - The test database is an in-memory SQLite instance created fresh for each test session.
 - Use `admin_client` for admin-protected endpoints and `auth_client` for user-protected endpoints — never manually set cookies in tests.
 
-**Key fixtures in `conftest.py`** are documented in `API-SPEC.md` section 8.2. Always use them — never create ad-hoc database sessions or users inside individual test files.
+**Key fixtures in `conftest.py`** are documented in `STARTER-API-SPEC.md` section 8.2. Always use them — never create ad-hoc database sessions or users inside individual test files.
 
 ---
 
@@ -249,7 +249,7 @@ alembic downgrade -1
 
 ## Environment Variables
 
-All environment variables are documented in `API-SPEC.md` section 9. Copy `.env.example` to `.env` for local development. Never commit `.env`.
+All environment variables are documented in `STARTER-API-SPEC.md` section 9. Copy `.env.example` to `.env` for local development. Never commit `.env`.
 
 ---
 

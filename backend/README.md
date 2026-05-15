@@ -13,12 +13,12 @@ It is the backend half of a two-project starter system. The companion frontend i
 - Optional registration whitelist (toggleable at runtime)
 - Provider-agnostic email layer with SMTP, Resend, and mock providers built in
 - Rate limiting on sensitive auth endpoints
-- Per-account brute-force lockout with exponential backoff and user email notification — see [`API-SPEC.md` §6.7](./API-SPEC.md#67-per-account-brute-force-lockout)
-- Structured JSON security event logging (login attempts, admin actions, session invalidations) — see [`API-SPEC.md` §6.6](./API-SPEC.md#66-security-event-logging)
+- Per-account brute-force lockout with exponential backoff and user email notification — see [`STARTER-API-SPEC.md` §6.7](./STARTER-API-SPEC.md#67-per-account-brute-force-lockout)
+- Structured JSON security event logging (login attempts, admin actions, session invalidations) — see [`STARTER-API-SPEC.md` §6.6](./STARTER-API-SPEC.md#66-security-event-logging)
 - Async SQLAlchemy 2.x with Alembic migrations
 - Pytest test suite with ≥ 80% coverage gate
 
-For the full endpoint reference, error codes, and behavioural rules, see [`API-SPEC.md`](./API-SPEC.md).
+For the full endpoint reference, error codes, and behavioural rules, see [`STARTER-API-SPEC.md`](./STARTER-API-SPEC.md).
 
 ---
 
@@ -263,6 +263,6 @@ The strict layer separation enforced by `CLAUDE.md` (route handlers → services
 
 ## Further reading
 
-- [`API-SPEC.md`](./API-SPEC.md) — full API specification: every endpoint, request/response shape, error code, and behavioural rule
-- [`API-DEV-PLAN.md`](./API-DEV-PLAN.md) — the phased development plan used to build this starter
+- [`STARTER-API-SPEC.md`](./STARTER-API-SPEC.md) — full API specification: every endpoint, request/response shape, error code, and behavioural rule
+- [`STARTER-API-DEV-PLAN.md`](./STARTER-API-DEV-PLAN.md) — the phased development plan used to build this starter
 - [`CLAUDE.md`](./CLAUDE.md) — coding conventions and project rules (read by Claude Code at session start)

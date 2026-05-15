@@ -13,7 +13,7 @@ What's included out of the box:
 - Toast notifications via Sonner, mounted globally
 - A placeholder `/dashboard` page that consuming applications replace with their own home screen
 
-For the full feature specification — every page, behaviour, validation rule, and acceptance criterion — see [`SPEC.md`](./SPEC.md).
+For the full feature specification — every page, behaviour, validation rule, and acceptance criterion — see [`STARTER-SPEC.md`](./STARTER-SPEC.md).
 
 ## Relationship to `fastapi-starter`
 
@@ -23,7 +23,7 @@ For the full feature specification — every page, behaviour, validation rule, a
 - Sessions are HTTP-only cookies managed entirely by the backend — the frontend never reads, writes, or manipulates cookies.
 - All API calls go through `src/api/client.ts` with `credentials: 'include'`.
 
-You can run `react-starter` against any backend that implements the API surface described in `SPEC.md`, but `fastapi-starter` is the reference implementation and the one this project has been integration-tested against.
+You can run `react-starter` against any backend that implements the API surface described in `STARTER-SPEC.md`, but `fastapi-starter` is the reference implementation and the one this project has been integration-tested against.
 
 ## Prerequisites
 
@@ -138,6 +138,6 @@ src/
 
 ## Documentation
 
-- [`SPEC.md`](./SPEC.md) — authoritative feature specification.
+- [`STARTER-SPEC.md`](./STARTER-SPEC.md) — authoritative feature specification.
 - [`CLAUDE.md`](./CLAUDE.md) — coding conventions and rules followed throughout the codebase. Read this if you intend to extend the project (whether by hand or with an AI coding assistant).
-- [`DEV-PLAN.md`](./DEV-PLAN.md) — phased plan used to build this project from scratch.
+- [`STARTER-DEV-PLAN.md`](./STARTER-DEV-PLAN.md) — phased plan used to build this project from scratch.
