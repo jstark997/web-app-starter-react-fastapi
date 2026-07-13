@@ -20,9 +20,9 @@ asyncpg==0.31.0       # PostgreSQL driver for production
 
 # Validation & settings
 pydantic==2.12.5
-pydantic-settings==2.13.1
+pydantic-settings==2.14.2   # fixes GHSA-4xgf-cpjx-pc3j (< 2.14.2)
 email-validator==2.3.0
-python-multipart==0.0.27   # fixes GHSA-mj87-hwqh-73pj, GHSA-pp6c-gr5w-3c5g (< 0.0.27)
+python-multipart==0.0.32   # fixes GHSA-v9pg-7xvm-68hf (< 0.0.31), GHSA-5rvq-cxj2-64vf/GHSA-6jv3-5f52-599m (< 0.0.30), GHSA-mj87-hwqh-73pj/GHSA-pp6c-gr5w-3c5g (< 0.0.27)
 python-dotenv==1.2.2
 
 # Security overrides for transitive dependencies. Listed here so pip-compile
@@ -30,6 +30,8 @@ python-dotenv==1.2.2
 # pulls in a fixed release.
 mako>=1.3.12               # via alembic; GHSA-2h4p-vjrc-8xpq (< 1.3.12)
 urllib3>=2.7.0             # via resend → requests; GHSA-qccp-gfcp-xxvc, GHSA-mf9v-mfxr-j63j (< 2.7.0)
+idna>=3.15                 # via anyio/requests; PYSEC-2026-215 (< 3.15)
+starlette>=1.3.1           # via fastapi (pin is >=0.46.0, no ceiling); PYSEC-2026-161 (< 1.0.1), GHSA-wqp7-x3pw-xc5r/GHSA-x746-7m8f-x49c (< 1.1.0), PYSEC-2026-248 (< 1.3.0), PYSEC-2026-249 (< 1.3.1)
 
 # Auth & rate limiting
 bcrypt==4.0.1
