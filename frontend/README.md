@@ -29,10 +29,10 @@ You can run `react-starter` against any backend that implements the API surface 
 
 | Tool | Version |
 |---|---|
-| Node.js | 20.19+ or 22.12+ (LTS recommended) |
-| pnpm | 9+ |
+| Node.js | 22.13+ (LTS recommended) |
+| pnpm | 11+ |
 
-This project uses Vite 8, which requires Node 20.19 or newer. Use [`nvm`](https://github.com/nvm-sh/nvm) or [`fnm`](https://github.com/Schniz/fnm) to manage Node versions.
+This project pins pnpm 11 (via the `packageManager` field in `package.json`), which requires Node 22.13 or newer. Use [`nvm`](https://github.com/nvm-sh/nvm) or [`fnm`](https://github.com/Schniz/fnm) to manage Node versions.
 
 ## Setup
 
